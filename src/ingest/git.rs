@@ -1,0 +1,82 @@
+use crate::core::models::{Entity, EntityKind, Relation, RelationKind};
+use chrono::{DateTime, TimeZone, Utc};
+use git2::{Repository, Oid};
+use anyhow::Result;
+
+pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
+    let repo = Repository::open(path)?;
+    let mut entities = Vec::new();
+    let mut relations = Vec::new();
+    let mut revwalk = repo.revwalk()?;
+    revwalk.push_head()?;
+
+    for oid in revwalk.take(1000) { // cap at 1000 for now
+        let oid = oid?;
+        let commit = repo.find_commit(oid)?;
+        
+        let commit_id = format!("commit:{}", oid);
+        let author = commit.author();
+        let author_name = author.name().unwrap_or("unknown").to_string();
+        let author_id = format!("author:{}", author_name);
+        let message = commit.message().unwrap_or("").to_string();
+        let time = Utc.timestamp_opt(commit.time().seconds(), 0).unwrap();
+
+        // Author entity
+        entities.push(Entity {
+            id: author_id.clone(),
+            kind: EntityKind::Note, // placeholder for Person
+            name: author_name,
+            content: None,
+            created_at: time,
+            updated_at: time,
+            source: "git:author".to_string(),
+        });
+
+        // Commit entity
+        entities.push(Entity {
+            id: commit_id.clone(),
+            kind: EntityKind::Commit,
+            name: message.lines().next().unwrap_or("").to_string(),
+            content: Some(message),
+            created_at: time,
+            updated_at: time,
+            source: "git:commit".to_string(),
+        });
+
+        // Relation: author -> commit
+        relations.push(Relation {
+            id: format!("rel:{}:{}", author_id, commit_id),
+            from_id: author_id,
+            to_id: commit_id.clone(),
+            kind: RelationKind::Authored,
+            created_at: time,
+        });
+
+        // Files in this commit
+        let tree = commit.tree()?;
+        for entry in tree.iter() {
+            if let Some(name) = entry.name() {
+                let file_id = format!("file:{}:{}", oid, name);
+                entities.push(Entity {
+                    id: file_id.clone(),
+                    kind: EntityKind::File,
+                    name: name.to_string(),
+                    content: None,
+                    created_at: time,
+                    updated_at: time,
+                    source: "git:file".to_string(),
+                });
+
+                relations.push(Relation {
+                    id: format!("rel:{}:{}", commit_id, file_id),
+                    from_id: commit_id.clone(),
+                    to_id: file_id,
+                    kind: RelationKind::Modified,
+                    created_at: time,
+                });
+            }
+        }
+    }
+
+    Ok((entities, relations))
+}

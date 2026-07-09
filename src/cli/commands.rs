@@ -11,8 +11,13 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Ingest a Git repository
+    /// Ingest Git history (one-time)
     Ingest {
+        #[arg(short, long)]
+        path: PathBuf,
+    },
+    /// Watch filesystem for live changes
+    Watch {
         #[arg(short, long)]
         path: PathBuf,
     },

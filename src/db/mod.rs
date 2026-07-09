@@ -45,3 +45,35 @@ pub async fn insert_relations(pool: &SqlitePool, relations: &[Relation]) -> anyh
     tx.commit().await?;
     Ok(())
 }
+
+// NEW: Upsert for live file watching — preserves created_at on updates
+pub async fn upsert_entity(pool: &SqlitePool, entity: &Entity) -> anyhow::Result<()> {
+    let updated = sqlx::query(
+        "UPDATE entities SET kind = ?, name = ?, content = ?, updated_at = ?, source = ? WHERE id = ?"
+    )
+    .bind(format!("{:?}", entity.kind))
+    .bind(&entity.name)
+    .bind(&entity.content)
+    .bind(entity.updated_at.to_rfc3339())
+    .bind(&entity.source)
+    .bind(&entity.id)
+    .execute(pool)
+    .await?
+    .rows_affected();
+
+    if updated == 0 {
+        sqlx::query(
+            "INSERT INTO entities (id, kind, name, content, created_at, updated_at, source) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind(&entity.id)
+        .bind(format!("{:?}", entity.kind))
+        .bind(&entity.name)
+        .bind(&entity.content)
+        .bind(entity.created_at.to_rfc3339())
+        .bind(entity.updated_at.to_rfc3339())
+        .bind(&entity.source)
+        .execute(pool)
+        .await?;
+    }
+    Ok(())
+}

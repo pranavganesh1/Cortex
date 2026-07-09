@@ -1,2 +1,2 @@
 [env]
-CFLAGS = "-include windows.h -include winerror.h -include winbase.h -DEWOULDBLOCK=EAGAIN -DFLS_OUT_OF_INDEXES=0xFFFFFFFF"
+CFLAGS = "-include c:/cortex_root/.cargo/mingw_compat.h -DFLS_OUT_OF_INDEXES=0xFFFFFFFF"

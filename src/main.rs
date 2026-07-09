@@ -28,14 +28,24 @@ async fn main() -> anyhow::Result<()> {
             insert_relations(&pool, &relations).await?;
             info!("Ingested successfully.");
         }
+        Commands::Watch { path } => {
+            info!("Starting watcher for {}", path.display());
+            cortex::ingest::watch::start_watcher(path, pool).await?;
+        }
         Commands::Ask { query } => {
-            println!("Query: {} (not implemented yet — Day 3)", query);
+            println!("Query: {} (not implemented yet — Day 5)", query);
         }
         Commands::Status => {
             let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entities")
                 .fetch_one(&pool)
                 .await?;
-            println!("Total entities in memory: {}", count);
+            let live_count: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM entities WHERE source = 'filesystem'"
+            )
+            .fetch_one(&pool)
+            .await?;
+            println!("Total entities: {}", count);
+            println!("Live filesystem entities: {}", live_count);
         }
     }
 

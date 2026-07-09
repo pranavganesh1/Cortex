@@ -102,6 +102,12 @@ typedef enum {
 } WELL_KNOWN_SID_TYPE;
 #endif
 
+// Declare IsWellKnownSid with __attribute__((__stdcall__))
+BOOL __attribute__((__stdcall__)) IsWellKnownSid(PSID pSid, WELL_KNOWN_SID_TYPE WellKnownSidType);
+
+// Declare GetTickCount64 with __attribute__((__stdcall__))
+ULONGLONG __attribute__((__stdcall__)) GetTickCount64(VOID);
+
 // Definitions for pollfd and flags
 #ifndef POLLIN
 struct pollfd {
@@ -116,6 +122,9 @@ struct pollfd {
 #define POLLHUP     0x0002
 #define POLLNVAL    0x0004
 #endif
+
+// Declare WSAPoll with __attribute__((__stdcall__))
+int __attribute__((__stdcall__)) WSAPoll(struct pollfd *fdArray, ULONG fds, INT timeout);
 
 // POSIX error codes
 #ifndef ETIMEDOUT
@@ -133,6 +142,18 @@ struct pollfd {
 // Windows errors
 #ifndef ERROR_INSUFFICIENT_BUFFER
 #define ERROR_INSUFFICIENT_BUFFER 122L
+#endif
+
+// FLS declarations
+typedef VOID (__attribute__((__stdcall__)) *PFLS_CALLBACK_FUNCTION)(PVOID);
+DWORD __attribute__((__stdcall__)) FlsAlloc(PFLS_CALLBACK_FUNCTION lpCallback);
+BOOL __attribute__((__stdcall__)) FlsFree(DWORD dwFlsIndex);
+BOOL __attribute__((__stdcall__)) FlsSetValue(DWORD dwFlsIndex, PVOID lpFlsData);
+PVOID __attribute__((__stdcall__)) FlsGetValue(DWORD dwFlsIndex);
+
+// InterlockedAdd macro for 32-bit MinGW
+#ifndef InterlockedAdd
+#define InterlockedAdd(a, v) (InterlockedExchangeAdd((LONG volatile *)(a), (LONG)(v)) + (LONG)(v))
 #endif
 
 #endif // MINGW_COMPAT_H

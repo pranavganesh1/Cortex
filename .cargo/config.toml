@@ -1,2 +1,9 @@
 [env]
 CFLAGS = "-include c:/cortex_root/.cargo/mingw_compat.h -DFLS_OUT_OF_INDEXES=0xFFFFFFFF"
+
+[target.i686-pc-windows-gnu]
+rustflags = [
+    "-C", "link-arg=C:/Users/prana/.rustup/toolchains/stable-i686-pc-windows-gnu/lib/rustlib/i686-pc-windows-gnu/lib/self-contained/libkernel32.a",
+    "-C", "link-arg=C:/Users/prana/.rustup/toolchains/stable-i686-pc-windows-gnu/lib/rustlib/i686-pc-windows-gnu/lib/self-contained/libadvapi32.a",
+    "-C", "link-arg=C:/Users/prana/.rustup/toolchains/stable-i686-pc-windows-gnu/lib/rustlib/i686-pc-windows-gnu/lib/self-contained/libws2_32.a"
+]

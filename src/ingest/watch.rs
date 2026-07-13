@@ -5,7 +5,8 @@ use std::time::Duration;
 use anyhow::Result;
 use sqlx::SqlitePool;
 use crate::core::models::{Entity, EntityKind};
-use crate::db::upsert_entity;
+use crate::db::{upsert_entity, delete_entities_for_file, insert_entities, insert_relations};
+use crate::ingest::parser::parse_file;
 use chrono::Utc;
 
 pub async fn start_watcher(path: PathBuf, pool: SqlitePool) -> Result<()> {
@@ -26,7 +27,6 @@ pub async fn start_watcher(path: PathBuf, pool: SqlitePool) -> Result<()> {
     let handle = tokio::runtime::Handle::current();
     let root = path.clone();
 
-    // Run the debounce loop in a blocking thread
     tokio::task::spawn_blocking(move || {
         let mut pending = std::collections::HashSet::<PathBuf>::new();
         let mut last_flush = std::time::Instant::now();
@@ -89,25 +89,44 @@ fn is_code_file(path: &Path) -> bool {
 async fn process_file(path: &Path, root: &Path, pool: &SqlitePool) -> Result<()> {
     let content = match tokio::fs::read_to_string(path).await {
         Ok(c) => c,
-        Err(_) => return Ok(()), // Skip binary or unreadable files
+        Err(_) => return Ok(()),
     };
 
     let relative = path.strip_prefix(root).unwrap_or(path).to_string_lossy().to_string();
     let file_id = format!("file:{}", relative);
     let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
 
+    // 1. Upsert the file entity
     let entity = Entity {
-        id: file_id,
+        id: file_id.clone(),
         kind: EntityKind::File,
         name,
-        content: Some(content),
+        content: Some(content.clone()),
         created_at: Utc::now(),
         updated_at: Utc::now(),
         source: "filesystem".to_string(),
+        parent_id: None,
     };
-
     upsert_entity(pool, &entity).await?;
     println!("✓ {}", relative);
 
+    // 2. If it's a parseable code file, delete old code entities and re-parse
+    if is_parseable(path) {
+        delete_entities_for_file(pool, &file_id).await?;
+
+        if let Some((entities, relations)) = parse_file(path, &content) {
+            insert_entities(pool, &entities).await?;
+            insert_relations(pool, &relations).await?;
+            println!("  └─ {} entities, {} relations", entities.len(), relations.len());
+        }
+    }
+
     Ok(())
+}
+
+fn is_parseable(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|e| e.to_str()),
+        Some("rs") | Some("py") | Some("js") | Some("ts") | Some("jsx") | Some("tsx") | Some("go")
+    )
 }

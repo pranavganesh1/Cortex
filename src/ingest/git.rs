@@ -1,6 +1,7 @@
 use crate::core::models::{Entity, EntityKind, Relation, RelationKind};
-use chrono::{DateTime, TimeZone, Utc};
-use git2::{Repository, Oid};
+use chrono::TimeZone;
+use chrono::Utc;
+use git2::Repository;
 use anyhow::Result;
 
 pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
@@ -10,7 +11,7 @@ pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
     let mut revwalk = repo.revwalk()?;
     revwalk.push_head()?;
 
-    for oid in revwalk.take(1000) { // cap at 1000 for now
+    for oid in revwalk.take(1000) {
         let oid = oid?;
         let commit = repo.find_commit(oid)?;
         
@@ -24,12 +25,13 @@ pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
         // Author entity
         entities.push(Entity {
             id: author_id.clone(),
-            kind: EntityKind::Note, // placeholder for Person
+            kind: EntityKind::Note,
             name: author_name,
             content: None,
             created_at: time,
             updated_at: time,
             source: "git:author".to_string(),
+            parent_id: None,
         });
 
         // Commit entity
@@ -41,6 +43,7 @@ pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
             created_at: time,
             updated_at: time,
             source: "git:commit".to_string(),
+            parent_id: None,
         });
 
         // Relation: author -> commit
@@ -65,6 +68,7 @@ pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
                     created_at: time,
                     updated_at: time,
                     source: "git:file".to_string(),
+                    parent_id: Some(commit_id.clone()),
                 });
 
                 relations.push(Relation {

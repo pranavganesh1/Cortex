@@ -9,8 +9,8 @@ pub async fn insert_entities(pool: &SqlitePool, entities: &[Entity]) -> anyhow::
     for e in entities {
         sqlx::query(
             r#"INSERT OR IGNORE INTO entities 
-               (id, kind, name, content, created_at, updated_at, source) 
-               VALUES (?, ?, ?, ?, ?, ?, ?)"#
+               (id, kind, name, content, created_at, updated_at, source, parent_id) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#
         )
         .bind(&e.id)
         .bind(format!("{:?}", e.kind))
@@ -19,6 +19,7 @@ pub async fn insert_entities(pool: &SqlitePool, entities: &[Entity]) -> anyhow::
         .bind(e.created_at.to_rfc3339())
         .bind(e.updated_at.to_rfc3339())
         .bind(&e.source)
+        .bind(&e.parent_id)
         .execute(&mut *tx)
         .await?;
     }
@@ -46,16 +47,16 @@ pub async fn insert_relations(pool: &SqlitePool, relations: &[Relation]) -> anyh
     Ok(())
 }
 
-// NEW: Upsert for live file watching — preserves created_at on updates
 pub async fn upsert_entity(pool: &SqlitePool, entity: &Entity) -> anyhow::Result<()> {
     let updated = sqlx::query(
-        "UPDATE entities SET kind = ?, name = ?, content = ?, updated_at = ?, source = ? WHERE id = ?"
+        "UPDATE entities SET kind = ?, name = ?, content = ?, updated_at = ?, source = ?, parent_id = ? WHERE id = ?"
     )
     .bind(format!("{:?}", entity.kind))
     .bind(&entity.name)
     .bind(&entity.content)
     .bind(entity.updated_at.to_rfc3339())
     .bind(&entity.source)
+    .bind(&entity.parent_id)
     .bind(&entity.id)
     .execute(pool)
     .await?
@@ -63,7 +64,7 @@ pub async fn upsert_entity(pool: &SqlitePool, entity: &Entity) -> anyhow::Result
 
     if updated == 0 {
         sqlx::query(
-            "INSERT INTO entities (id, kind, name, content, created_at, updated_at, source) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO entities (id, kind, name, content, created_at, updated_at, source, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&entity.id)
         .bind(format!("{:?}", entity.kind))
@@ -72,8 +73,31 @@ pub async fn upsert_entity(pool: &SqlitePool, entity: &Entity) -> anyhow::Result
         .bind(entity.created_at.to_rfc3339())
         .bind(entity.updated_at.to_rfc3339())
         .bind(&entity.source)
+        .bind(&entity.parent_id)
         .execute(pool)
         .await?;
     }
+    Ok(())
+}
+
+// Delete all code entities belonging to a file before re-parsing
+pub async fn delete_entities_for_file(pool: &SqlitePool, file_id: &str) -> anyhow::Result<()> {
+    // Delete relations involving this file's code entities
+    sqlx::query(
+        r#"DELETE FROM relations 
+           WHERE from_id IN (SELECT id FROM entities WHERE parent_id = ?)
+           OR to_id IN (SELECT id FROM entities WHERE parent_id = ?)"#
+    )
+    .bind(file_id)
+    .bind(file_id)
+    .execute(pool)
+    .await?;
+
+    // Delete the code entities themselves
+    sqlx::query("DELETE FROM entities WHERE parent_id = ?")
+        .bind(file_id)
+        .execute(pool)
+        .await?;
+
     Ok(())
 }

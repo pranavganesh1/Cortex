@@ -9,7 +9,8 @@ pub struct Entity {
     pub content: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub source: String, // e.g., "git:commit", "git:file", "manual"
+    pub source: String,
+    pub parent_id: Option<String>, // which file/commit owns this entity
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,6 +18,12 @@ pub enum EntityKind {
     Commit,
     File,
     Function,
+    Struct,
+    Class,
+    Enum,
+    Trait,
+    Interface,
+    Module,
     Decision,
     Note,
 }
@@ -32,18 +39,9 @@ pub struct Relation {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RelationKind {
-    Authored,      // person -> commit
-    Modified,      // commit -> file
-    Contains,      // file -> function
-    DependsOn,     // function -> function
-    DecidedIn,     // decision -> commit
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Event {
-    pub id: String,
-    pub entity_id: String,
-    pub action: String,
-    pub timestamp: DateTime<Utc>,
-    pub metadata: Option<String>,
+    Authored,
+    Modified,
+    Contains,
+    DependsOn,
+    DecidedIn,
 }

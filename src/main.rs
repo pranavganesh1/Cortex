@@ -33,7 +33,10 @@ async fn main() -> anyhow::Result<()> {
             cortex::ingest::watch::start_watcher(path, pool).await?;
         }
         Commands::Ask { query } => {
-            println!("Query: {} (not implemented yet — Day 5)", query);
+            let parsed = cortex::query::parser::parse_query(&query);
+            let result = cortex::query::executor::execute_query(&pool, &parsed).await?;
+            let formatted = cortex::query::formatter::format_result(&result);
+            println!("{}", formatted);
         }
         Commands::Status => {
             let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entities")

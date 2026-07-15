@@ -29,8 +29,24 @@ async fn main() -> anyhow::Result<()> {
             info!("Ingested successfully.");
         }
         Commands::Watch { path } => {
-            info!("Starting watcher for {}", path.display());
+            info!("Starting watcher + API for {}", path.display());
+            
+            // Start API server in background
+            let api_pool = pool.clone();
+            let api_handle = tokio::spawn(async move {
+                if let Err(e) = cortex::api::start_server(api_pool).await {
+                    eprintln!("API server error: {}", e);
+                }
+            });
+            
+            // Start file watcher (blocks until Ctrl+C)
             cortex::ingest::watch::start_watcher(path, pool).await?;
+            
+            api_handle.abort();
+        }
+        Commands::Serve => {
+            info!("Starting Cortex API server");
+            cortex::api::start_server(pool).await?;
         }
         Commands::Ask { query } => {
             let parsed = cortex::query::parser::parse_query(&query);

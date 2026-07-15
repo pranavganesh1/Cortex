@@ -16,11 +16,13 @@ pub enum Commands {
         #[arg(short, long)]
         path: PathBuf,
     },
-    /// Watch filesystem for live changes
+    /// Watch filesystem for live changes + API server
     Watch {
         #[arg(short, long)]
         path: PathBuf,
     },
+    /// Start API server only
+    Serve,
     /// Query the knowledge graph
     Ask {
         query: String,

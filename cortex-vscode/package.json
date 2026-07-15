@@ -1,0 +1,42 @@
+{
+  "name": "cortex",
+  "displayName": "Cortex",
+  "description": "Universal AI memory layer for VS Code",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Machine Learning", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cortex.ask",
+        "title": "Ask with Cortex Context",
+        "category": "Cortex"
+      },
+      {
+        "command": "cortex.status",
+        "title": "Show Cortex Status",
+        "category": "Cortex"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "cortex.ask",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

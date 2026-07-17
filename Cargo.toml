@@ -28,3 +28,5 @@ comfy-table = "7.2.2"
 regex = "1.13.0"
 axum = "0.8.9"
 serde_json = "1.0.150"
+tower-http = { version = "0.6", features = ["cors"] }
+once_cell = "1.20"

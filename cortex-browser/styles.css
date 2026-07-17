@@ -1,0 +1,28 @@
+#cortex-inject-btn {
+  position: fixed !important;
+  bottom: 100px !important;
+  right: 24px !important;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  color: white !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  z-index: 999999 !important;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4) !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#cortex-inject-btn:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.6) !important;
+}
+
+#cortex-inject-btn:active {
+  transform: scale(0.95) !important;
+}

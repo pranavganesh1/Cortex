@@ -1,10 +1,11 @@
 use crate::core::models::{Entity, EntityKind, Relation, RelationKind};
-use chrono::TimeZone;
-use chrono::Utc;
-use git2::Repository;
+use crate::extract::decisions::{extract_from_text, store_decisions, SourceKind};
+use chrono::{DateTime, TimeZone, Utc};
+use git2::{Repository, Oid};
 use anyhow::Result;
+use sqlx::SqlitePool;
 
-pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
+pub async fn ingest_repo(path: &str, pool: &SqlitePool) -> Result<(Vec<Entity>, Vec<Relation>)> {
     let repo = Repository::open(path)?;
     let mut entities = Vec::new();
     let mut relations = Vec::new();
@@ -39,7 +40,7 @@ pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
             id: commit_id.clone(),
             kind: EntityKind::Commit,
             name: message.lines().next().unwrap_or("").to_string(),
-            content: Some(message),
+            content: Some(message.clone()),
             created_at: time,
             updated_at: time,
             source: "git:commit".to_string(),
@@ -54,6 +55,10 @@ pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
             kind: RelationKind::Authored,
             created_at: time,
         });
+
+        // Extract decisions from commit message
+        let decisions = extract_from_text(&message, &commit_id, SourceKind::CommitMessage);
+        store_decisions(pool, &decisions, Some(commit_id.clone())).await?;
 
         // Files in this commit
         let tree = commit.tree()?;
@@ -84,3 +89,4 @@ pub fn ingest_repo(path: &str) -> Result<(Vec<Entity>, Vec<Relation>)> {
 
     Ok((entities, relations))
 }
+

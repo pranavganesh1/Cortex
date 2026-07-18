@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Ingest { path } => {
             info!("Ingesting repo at {}", path.display());
-            let (entities, relations) = ingest_repo(path.to_str().unwrap())?;
+            let (entities, relations) = ingest_repo(path.to_str().unwrap(), &pool).await?;
             info!("Found {} entities, {} relations", entities.len(), relations.len());
             insert_entities(&pool, &entities).await?;
             insert_relations(&pool, &relations).await?;

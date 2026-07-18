@@ -6,14 +6,12 @@ pub fn parse_query(input: &str) -> ParsedQuery {
     let lower = input.to_lowercase();
 
     // 1. Detect intent
-    let intent = if lower.starts_with("how many") || lower.starts_with("count") {
+    let intent = if lower.starts_with("why") || lower.starts_with("how come") || lower.contains("reason") || lower.starts_with("explain") {
+        QueryIntent::Explain
+    } else if lower.starts_with("how many") || lower.starts_with("count") {
         QueryIntent::Count
     } else if lower.starts_with("find") || lower.starts_with("search") {
         QueryIntent::Find
-    } else if lower.starts_with("show") || lower.starts_with("list") || lower.starts_with("what") {
-        QueryIntent::List
-    } else if lower.starts_with("why") || lower.starts_with("explain") {
-        QueryIntent::Explain
     } else {
         QueryIntent::List
     };

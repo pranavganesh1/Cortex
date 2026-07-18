@@ -33,7 +33,7 @@ pub fn format_result(result: &QueryResult) -> String {
             EntityKind::File => "F",
             EntityKind::Commit => "G",
             EntityKind::Module => "M",
-            EntityKind::Decision => "D",
+            EntityKind::Decision => "💡",
             EntityKind::Note => "N",
         };
 
@@ -68,6 +68,20 @@ pub fn format_result(result: &QueryResult) -> String {
             ]);
         }
         output.push_str(&rel_table.to_string());
+    }
+
+    // Append decision details
+    let decisions: Vec<_> = result.entities.iter().filter(|e| matches!(e.kind, EntityKind::Decision)).collect();
+    if !decisions.is_empty() {
+        output.push_str("\n\n💡 Decisions found:\n");
+        for (i, d) in decisions.iter().enumerate() {
+            output.push_str(&format!("\n{}. ", i + 1));
+            if let Some(content) = &d.content {
+                for line in content.lines() {
+                    output.push_str(&format!("   {}\n", line));
+                }
+            }
+        }
     }
 
     output

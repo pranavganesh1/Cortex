@@ -134,10 +134,43 @@ async fn execute_count(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRe
 }
 
 async fn execute_explain(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryResult> {
-    // For now, just find the entity and return it with context
-    let mut result = execute_list(pool, query).await?;
-    result.query_description = "explanation".to_string();
-    Ok(result)
+    // Search for decisions related to the query topic
+    let topic = query.content_pattern.as_ref()
+        .or(query.name_pattern.as_ref())
+        .map(|s| s.as_str())
+        .unwrap_or("");
+    
+    let decisions: Vec<EntityRow> = sqlx::query_as(
+        r#"SELECT id, kind, name, content, created_at, updated_at, source, parent_id FROM entities 
+           WHERE kind = 'Decision' 
+           AND (name LIKE ? OR content LIKE ?)
+           ORDER BY created_at DESC
+           LIMIT 10"#
+    )
+    .bind(format!("%{}%", topic))
+    .bind(format!("%{}%", topic))
+    .fetch_all(pool)
+    .await?;
+    
+    let entities: Vec<Entity> = decisions.into_iter().map(|r| Entity {
+        id: r.id,
+        kind: parse_kind(&r.kind),
+        name: r.name,
+        content: r.content,
+        created_at: r.created_at.parse().unwrap_or_else(|_| chrono::Utc::now()),
+        updated_at: r.updated_at.parse().unwrap_or_else(|_| chrono::Utc::now()),
+        source: r.source,
+        parent_id: r.parent_id,
+    }).collect();
+    
+    let total_count = entities.len() as i64;
+    
+    Ok(QueryResult {
+        entities,
+        relations: vec![],
+        total_count,
+        query_description: format!("decisions about '{}'", topic),
+    })
 }
 
 // SQLx row helpers

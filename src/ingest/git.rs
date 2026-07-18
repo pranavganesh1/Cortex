@@ -1,7 +1,7 @@
 use crate::core::models::{Entity, EntityKind, Relation, RelationKind};
 use crate::extract::decisions::{extract_from_text, store_decisions, SourceKind};
-use chrono::{DateTime, TimeZone, Utc};
-use git2::{Repository, Oid};
+use chrono::{TimeZone, Utc};
+use git2::Repository;
 use anyhow::Result;
 use sqlx::SqlitePool;
 

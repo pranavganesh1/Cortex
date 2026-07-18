@@ -124,6 +124,10 @@ async fn process_file(path: &Path, root: &Path, pool: &SqlitePool) -> Result<()>
         }
     }
 
+    // Extract decisions from code comments
+    let comment_decisions = crate::extract::decisions::extract_from_comments(&content, &relative);
+    crate::extract::decisions::store_decisions(pool, &comment_decisions, Some(file_id.clone())).await?;
+
     Ok(())
 }
 

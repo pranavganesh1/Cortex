@@ -45,3 +45,12 @@ pub enum RelationKind {
     DependsOn,
     DecidedIn,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Event {
+    pub id: String,
+    pub entity_id: String,
+    pub action: String,
+    pub timestamp: DateTime<Utc>,
+    pub metadata: Option<String>,
+}

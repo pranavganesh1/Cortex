@@ -60,6 +60,9 @@ pub async fn ingest_repo(path: &str, pool: &SqlitePool) -> Result<(Vec<Entity>, 
         let decisions = extract_from_text(&message, &commit_id, SourceKind::CommitMessage);
         store_decisions(pool, &decisions, Some(commit_id.clone())).await?;
 
+        // Log commit event
+        crate::core::events::log_event(pool, &commit_id, "git:commit", Some(message.lines().next().unwrap_or(""))).await?;
+
         // Files in this commit
         let tree = commit.tree()?;
         for entry in tree.iter() {

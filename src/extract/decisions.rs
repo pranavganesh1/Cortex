@@ -146,6 +146,9 @@ pub async fn store_decisions(
             parent_id: parent_id.clone(),
         });
         
+        // Log decision event
+        let _ = crate::core::events::log_event(pool, &decision_id, "decision:extracted", Some(&d.text)).await;
+        
         // Link to parent if provided
         if let Some(pid) = &parent_id {
             relations.push(Relation {

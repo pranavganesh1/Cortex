@@ -111,6 +111,8 @@ async fn process_file(path: &Path, root: &Path, pool: &SqlitePool) -> Result<()>
         parent_id: None,
     };
     upsert_entity(pool, &entity).await?;
+    // Log file save event
+    let _ = crate::core::events::log_event(pool, &file_id, "file:save", Some(&relative)).await;
     println!("✓ {}", relative);
 
     // 2. If it's a parseable code file, delete old code entities and re-parse

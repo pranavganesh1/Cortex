@@ -31,7 +31,6 @@ async fn main() -> anyhow::Result<()> {
         Commands::Watch { path } => {
             info!("Starting watcher + API for {}", path.display());
             
-            // Start API server in background
             let api_pool = pool.clone();
             let api_handle = tokio::spawn(async move {
                 if let Err(e) = cortex::api::start_server(api_pool).await {
@@ -39,9 +38,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             });
             
-            // Start file watcher (blocks until Ctrl+C)
             cortex::ingest::watch::start_watcher(path, pool).await?;
-            
             api_handle.abort();
         }
         Commands::Serve => {
@@ -49,9 +46,42 @@ async fn main() -> anyhow::Result<()> {
             cortex::api::start_server(pool).await?;
         }
         Commands::Ask { query } => {
+            // Log the query
+            let _ = cortex::core::events::log_event(&pool, "system", "query:asked", Some(&query)).await;
+            
             let parsed = cortex::query::parser::parse_query(&query);
             let result = cortex::query::executor::execute_query(&pool, &parsed).await?;
             let formatted = cortex::query::formatter::format_result(&result);
+            println!("{}", formatted);
+        }
+        Commands::Timeline { when } => {
+            let range = cortex::temporal::parser::parse_time_expression(&when)
+                .unwrap_or_else(|| {
+                    println!("⚠️ Could not parse '{}'. Using 'today'.", when);
+                    cortex::temporal::parser::parse_time_expression("today").unwrap()
+                });
+            
+            let sessions = cortex::temporal::reconstructor::get_timeline(&pool, &range).await?;
+            let formatted = cortex::temporal::formatter::format_timeline(&sessions);
+            println!("{}", formatted);
+        }
+        Commands::Recall { when } => {
+            let range = cortex::temporal::parser::parse_time_expression(&when)
+                .unwrap_or_else(|| {
+                    println!("⚠️ Could not parse '{}'. Using '2 hours ago'.", when);
+                    cortex::temporal::parser::parse_time_expression("2 hours ago").unwrap()
+                });
+            
+            // For recall, we want the midpoint of the range as the point-in-time
+            let point = if range.is_point {
+                range.start + chrono::Duration::minutes(30)
+            } else {
+                // For ranges, use the start
+                range.start
+            };
+            
+            let state = cortex::temporal::reconstructor::reconstruct_state(&pool, point).await?;
+            let formatted = cortex::temporal::formatter::format_mental_state(&state);
             println!("{}", formatted);
         }
         Commands::Status => {
@@ -63,8 +93,12 @@ async fn main() -> anyhow::Result<()> {
             )
             .fetch_one(&pool)
             .await?;
+            let event_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events")
+                .fetch_one(&pool)
+                .await?;
             println!("Total entities: {}", count);
             println!("Live filesystem entities: {}", live_count);
+            println!("Events recorded: {}", event_count);
         }
     }
 

@@ -27,6 +27,17 @@ pub enum Commands {
     Ask {
         query: String,
     },
+    /// Show work timeline
+    Timeline {
+        /// Time expression: today, yesterday, last week, "2 days ago", etc.
+        #[arg(default_value = "today")]
+        when: String,
+    },
+    /// Recall what you were doing at a specific time
+    Recall {
+        /// Time expression: "Tuesday 3pm", "2 hours ago", etc.
+        when: String,
+    },
     /// Show stats
     Status,
 }

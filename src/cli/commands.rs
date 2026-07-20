@@ -27,15 +27,21 @@ pub enum Commands {
     Ask {
         query: String,
     },
+    /// Semantic search with vector embeddings
+    Search {
+        query: String,
+        #[arg(short, long, default_value = "10")]
+        limit: usize,
+    },
+    /// Index all entities for semantic search
+    Index,
     /// Show work timeline
     Timeline {
-        /// Time expression: today, yesterday, last week, "2 days ago", etc.
         #[arg(default_value = "today")]
         when: String,
     },
     /// Recall what you were doing at a specific time
     Recall {
-        /// Time expression: "Tuesday 3pm", "2 hours ago", etc.
         when: String,
     },
     /// Show stats

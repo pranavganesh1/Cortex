@@ -30,6 +30,13 @@ pub async fn init_db(pool: &SqlitePool) -> anyhow::Result<()> {
             metadata TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS embeddings (
+            entity_id TEXT PRIMARY KEY,
+            vector TEXT NOT NULL,
+            model TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_entities_kind ON entities(kind);
         CREATE INDEX IF NOT EXISTS idx_entities_name ON entities(name);
         CREATE INDEX IF NOT EXISTS idx_entities_parent ON entities(parent_id);

@@ -130,6 +130,16 @@ async fn process_file(path: &Path, root: &Path, pool: &SqlitePool) -> Result<()>
     let comment_decisions = crate::extract::decisions::extract_from_comments(&content, &relative);
     crate::extract::decisions::store_decisions(pool, &comment_decisions, Some(file_id.clone())).await?;
 
+    // Auto-index for semantic search (fire and forget)
+    let pool_clone = pool.clone();
+    let file_id_clone = file_id.clone();
+    let name_clone = entity.name.clone();
+    let content_clone = content.clone();
+    tokio::spawn(async move {
+        let text = format!("{} {}", name_clone, content_clone.lines().take(30).collect::<Vec<_>>().join("\n"));
+        let _ = crate::embed::indexer::index_entity(&pool_clone, &file_id_clone, &text).await;
+    });
+
     Ok(())
 }
 

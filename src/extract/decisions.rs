@@ -149,6 +149,9 @@ pub async fn store_decisions(
         // Log decision event
         let _ = crate::core::events::log_event(pool, &decision_id, "decision:extracted", Some(&d.text)).await;
         
+        // Push to working memory
+        crate::memory::stack::add_decision(&d.text);
+        
         // Link to parent if provided
         if let Some(pid) = &parent_id {
             relations.push(Relation {

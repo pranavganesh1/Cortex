@@ -99,6 +99,9 @@ async fn process_file(path: &Path, root: &Path, pool: &SqlitePool) -> Result<()>
     // Track as active file for context injection
     crate::core::state::set_active_file(&relative);
 
+    // Push to working memory stack
+    crate::memory::stack::touch_file(&relative);
+
     // 1. Upsert the file entity
     let entity = Entity {
         id: file_id.clone(),

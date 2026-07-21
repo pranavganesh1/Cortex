@@ -64,3 +64,8 @@ pub async fn active_context(
         .map_err(|e| e.to_string())?;
     Ok(ctx)
 }
+
+pub async fn focus(State(_state): State<super::AppState>) -> Result<String, String> {
+    let output = crate::memory::formatter::format_focus();
+    Ok(output)
+}

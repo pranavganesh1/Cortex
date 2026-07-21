@@ -44,6 +44,14 @@ pub enum Commands {
     Recall {
         when: String,
     },
+    /// Show current focus / working memory
+    Focus,
+    /// Show working memory stack
+    Stack,
+    /// Pop back to previous context
+    Back,
+    /// "Where was I?" — show recent context switches
+    Where,
     /// Show stats
     Status,
 }

@@ -49,6 +49,9 @@ async fn main() -> anyhow::Result<()> {
         Commands::Ask { query } => {
             let _ = cortex::core::events::log_event(&pool, "system", "query:asked", Some(&query)).await;
             
+            // Push to working memory
+            cortex::memory::stack::add_query(&query);
+            
             let parsed = cortex::query::parser::parse_query(&query);
             let result = cortex::query::executor::execute_query(&pool, &parsed).await?;
             let formatted = cortex::query::formatter::format_result(&result);
@@ -139,6 +142,25 @@ async fn main() -> anyhow::Result<()> {
             let state = cortex::temporal::reconstructor::reconstruct_state(&pool, point).await?;
             let formatted = cortex::temporal::formatter::format_mental_state(&state);
             println!("{}", formatted);
+        }
+        Commands::Focus => {
+            println!("{}", cortex::memory::formatter::format_focus());
+        }
+        Commands::Stack => {
+            println!("{}", cortex::memory::formatter::format_stack());
+        }
+        Commands::Back => {
+            match cortex::memory::stack::back() {
+                Some(prev) => {
+                    println!("{}", cortex::memory::formatter::format_back_result(&prev));
+                }
+                None => {
+                    println!("No previous context in stack. You're at the bottom.");
+                }
+            }
+        }
+        Commands::Where => {
+            println!("{}", cortex::memory::formatter::format_where_was_i());
         }
         Commands::Status => {
             let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entities")

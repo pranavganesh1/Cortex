@@ -52,6 +52,10 @@ pub enum Commands {
     Back,
     /// "Where was I?" — show recent context switches
     Where,
+    /// Show cognitive debt dashboard
+    Debt,
+    /// Show weekly cognitive report
+    Weekly,
     /// Show stats
     Status,
 }

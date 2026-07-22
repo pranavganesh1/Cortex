@@ -162,6 +162,14 @@ async fn main() -> anyhow::Result<()> {
         Commands::Where => {
             println!("{}", cortex::memory::formatter::format_where_was_i());
         }
+        Commands::Debt => {
+            let debts = cortex::debt::detector::detect_debt(&pool).await?;
+            println!("{}", cortex::debt::formatter::format_debt_report(&debts));
+        }
+        Commands::Weekly => {
+            let debts = cortex::debt::detector::detect_debt(&pool).await?;
+            println!("{}", cortex::debt::formatter::format_weekly_report(&debts));
+        }
         Commands::Status => {
             let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entities")
                 .fetch_one(&pool)

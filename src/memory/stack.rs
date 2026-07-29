@@ -156,3 +156,24 @@ where
 pub fn back() -> Option<ContextFrame> {
     WORKING_MEMORY.lock().ok()?.back()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_working_memory_touch_and_back() {
+        let mut wm = WorkingMemory::new();
+        wm.touch_file("src/main.rs");
+        wm.add_query("find functions");
+        assert_eq!(wm.current().files.len(), 1);
+        assert_eq!(wm.current().queries.len(), 1);
+
+        wm.push_current();
+        assert_eq!(wm.stack().len(), 1);
+
+        let popped = wm.back();
+        assert!(popped.is_some());
+        assert_eq!(wm.stack().len(), 0);
+    }
+}

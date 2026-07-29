@@ -92,7 +92,7 @@ async fn detect_abandoned_sessions(pool: &SqlitePool) -> Result<Vec<DebtItem>> {
         
         let ts = DateTime::parse_from_rfc3339(&timestamp)?.with_timezone(&Utc);
         let file = metadata.unwrap_or_else(|| entity_id.clone());
-        let file = if file.starts_with("file:") { file[5..].to_string() } else { file };
+        let file = if let Some(stripped) = file.strip_prefix("file:") { stripped.to_string() } else { file };
         
         debts.push(DebtItem {
             kind: DebtKind::AbandonedSession,
@@ -214,7 +214,7 @@ async fn detect_open_refactors(pool: &SqlitePool) -> Result<Vec<DebtItem>> {
     .await?;
     
     for (entity_id, count, day) in rows {
-        let file = if entity_id.starts_with("file:") { entity_id[5..].to_string() } else { entity_id.clone() };
+        let file = if let Some(stripped) = entity_id.strip_prefix("file:") { stripped.to_string() } else { entity_id.clone() };
         debts.push(DebtItem {
             kind: DebtKind::OpenRefactor,
             title: format!("Open refactor: {}", file),

@@ -16,7 +16,7 @@ pub struct ParsedQuery {
     pub limit: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueryIntent {
     List,
     Find,

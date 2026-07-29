@@ -13,7 +13,7 @@ pub struct Entity {
     pub parent_id: Option<String>, // which file/commit owns this entity
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntityKind {
     Commit,
     File,
@@ -37,7 +37,7 @@ pub struct Relation {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RelationKind {
     Authored,
     Modified,

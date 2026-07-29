@@ -109,3 +109,31 @@ fn detect_relation(text: &str) -> Option<RelationQuery> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_query_intents() {
+        let q1 = parse_query("why did authentication fail?");
+        assert_eq!(q1.intent, QueryIntent::Explain);
+
+        let q2 = parse_query("how many functions in src/main.rs");
+        assert_eq!(q2.intent, QueryIntent::Count);
+        assert_eq!(q2.entity_kind, Some(EntityKind::Function));
+
+        let q3 = parse_query("find struct named User");
+        assert_eq!(q3.intent, QueryIntent::Find);
+        assert_eq!(q3.entity_kind, Some(EntityKind::Struct));
+        assert_eq!(q3.name_pattern, Some("user".to_string()));
+    }
+
+    #[test]
+    fn test_parse_query_wildcards_and_locations() {
+        let q = parse_query("find function named handle_* in src/api");
+        assert_eq!(q.entity_kind, Some(EntityKind::Function));
+        assert_eq!(q.name_pattern, Some("handle_%".to_string()));
+        assert_eq!(q.location, Some("src/api".to_string()));
+    }
+}

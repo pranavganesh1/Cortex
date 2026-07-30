@@ -2,6 +2,11 @@
 name = "cortex"
 version = "0.1.0"
 edition = "2021"
+authors = ["Pranav Ganesh"]
+description = "The universal AI memory layer — your codebase's long-term memory"
+license = "MIT"
+repository = "https://github.com/pranavganesh1/Cortex"
+homepage = "https://github.com/pranavganesh1/Cortex"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }

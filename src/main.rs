@@ -190,6 +190,37 @@ async fn main() -> anyhow::Result<()> {
             println!("Events recorded: {}", event_count);
             println!("Embeddings indexed: {}", embed_count);
         }
+        Commands::Version => {
+            println!("╔══════════════════════════════════════════════════════╗");
+            println!("║              🧠 CORTEX — VERSION INFO               ║");
+            println!("╚══════════════════════════════════════════════════════╝");
+            println!();
+            println!("  Version:    {}", env!("CARGO_PKG_VERSION"));
+            println!("  Build:      Rust {} edition", "2021");
+            println!("  License:    MIT");
+            println!("  Repository: https://github.com/pranavganesh1/Cortex");
+            println!();
+            println!("  Data dir:   {}", db_path.parent().unwrap_or(&db_path).display());
+            println!("  Database:   {}", db_path.display());
+            println!("  OS:         {} {}", std::env::consts::OS, std::env::consts::ARCH);
+            println!();
+            
+            // Show quick stats if DB exists
+            if db_path.exists() {
+                let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM entities")
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap_or(0);
+                let embed_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM embeddings")
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap_or(0);
+                println!("  Entities:   {}", count);
+                println!("  Embeddings: {}", embed_count);
+            } else {
+                println!("  Database:   not initialized (run `cortex ingest` first)");
+            }
+        }
     }
 
     Ok(())

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(name = "cortex")]
 #[command(about = "Universal AI memory layer")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -58,4 +59,6 @@ pub enum Commands {
     Weekly,
     /// Show stats
     Status,
+    /// Show version and build information
+    Version,
 }

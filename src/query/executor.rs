@@ -21,42 +21,54 @@ pub struct QueryResult {
 
 async fn execute_list(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryResult> {
     let mut sql = String::from("SELECT id, kind, name, content, created_at, updated_at, source, parent_id FROM entities WHERE 1=1");
+    let mut binds: Vec<String> = Vec::new();
     let mut desc = String::new();
 
-    // Entity kind filter
+    // Entity kind filter (safe — value comes from our enum via Display)
     if let Some(kind) = &query.entity_kind {
-        sql.push_str(&format!(" AND kind = '{}'", kind));
+        sql.push_str(" AND kind = ?");
+        binds.push(format!("{}", kind));
         desc.push_str(&format!("{}s", kind));
     } else {
         desc.push_str("entities");
     }
 
-    // Name pattern
+    // Name pattern (user-derived — must be parameterized)
     if let Some(pattern) = &query.name_pattern {
-        sql.push_str(&format!(" AND name LIKE '%{}%'", pattern));
+        sql.push_str(" AND name LIKE ?");
+        binds.push(format!("%{}%", pattern));
         desc.push_str(&format!(" matching '{}'", pattern));
     }
 
-    // Content search
+    // Content search (user-derived — must be parameterized)
     if let Some(content) = &query.content_pattern {
-        sql.push_str(&format!(" AND (name LIKE '%{}%' OR content LIKE '%{}%')", content, content));
+        sql.push_str(" AND (name LIKE ? OR content LIKE ?)");
+        binds.push(format!("%{}%", content));
+        binds.push(format!("%{}%", content));
         desc.push_str(&format!(" related to '{}'", content));
     }
 
-    // Location filter (parent_id or file path)
+    // Location filter
     if let Some(loc) = &query.location {
         let file_id = if loc.starts_with("file:") {
             loc.clone()
         } else {
             format!("file:{}", loc)
         };
-        sql.push_str(&format!(" AND (parent_id = '{}' OR id = '{}')", file_id, file_id));
+        sql.push_str(" AND (parent_id = ? OR id = ?)");
+        binds.push(file_id.clone());
+        binds.push(file_id);
         desc.push_str(&format!(" in '{}'", loc));
     }
 
     sql.push_str(&format!(" LIMIT {}", query.limit));
 
-    let rows = sqlx::query_as::<_, EntityRow>(&sql).fetch_all(pool).await?;
+    // Build and execute the query with bind parameters
+    let mut db_query = sqlx::query_as::<_, EntityRow>(&sql);
+    for val in &binds {
+        db_query = db_query.bind(val);
+    }
+    let rows = db_query.fetch_all(pool).await?;
 
     let entities: Vec<Entity> = rows.into_iter().map(|r| Entity {
         id: r.id,
@@ -69,21 +81,25 @@ async fn execute_list(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRes
         parent_id: r.parent_id,
     }).collect();
 
-    // If relation query, traverse
+    // If relation query, traverse using parameterized queries
     let mut relations = Vec::new();
     if let Some(rel) = &query.relation {
         for entity in &entities {
-            let rel_sql = match rel.direction {
-                RelationDirection::From => format!(
-                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE from_id = '{}' AND kind = '{}'",
-                    entity.id, rel.kind
+            let (rel_sql, bind_id) = match rel.direction {
+                RelationDirection::From => (
+                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE from_id = ? AND kind = ?",
+                    &entity.id,
                 ),
-                RelationDirection::To => format!(
-                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE to_id = '{}' AND kind = '{}'",
-                    entity.id, rel.kind
+                RelationDirection::To => (
+                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE to_id = ? AND kind = ?",
+                    &entity.id,
                 ),
             };
-            let rel_rows = sqlx::query_as::<_, RelationRow>(&rel_sql).fetch_all(pool).await?;
+            let rel_rows = sqlx::query_as::<_, RelationRow>(rel_sql)
+                .bind(bind_id)
+                .bind(format!("{}", rel.kind))
+                .fetch_all(pool)
+                .await?;
             for r in rel_rows {
                 relations.push(Relation {
                     id: r.id,
@@ -108,28 +124,39 @@ async fn execute_list(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRes
 
 async fn execute_count(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryResult> {
     let mut sql = String::from("SELECT COUNT(*) FROM entities WHERE 1=1");
+    let mut binds: Vec<String> = Vec::new();
 
     if let Some(kind) = &query.entity_kind {
-        sql.push_str(&format!(" AND kind = '{}'", kind));
+        sql.push_str(" AND kind = ?");
+        binds.push(format!("{}", kind));
     }
     if let Some(pattern) = &query.name_pattern {
-        sql.push_str(&format!(" AND name LIKE '%{}%'", pattern));
+        sql.push_str(" AND name LIKE ?");
+        binds.push(format!("%{}%", pattern));
     }
     if let Some(content) = &query.content_pattern {
-        sql.push_str(&format!(" AND (name LIKE '%{}%' OR content LIKE '%{}%')", content, content));
+        sql.push_str(" AND (name LIKE ? OR content LIKE ?)");
+        binds.push(format!("%{}%", content));
+        binds.push(format!("%{}%", content));
     }
     if let Some(loc) = &query.location {
         let file_id = if loc.starts_with("file:") { loc.clone() } else { format!("file:{}", loc) };
-        sql.push_str(&format!(" AND (parent_id = '{}' OR id = '{}')", file_id, file_id));
+        sql.push_str(" AND (parent_id = ? OR id = ?)");
+        binds.push(file_id.clone());
+        binds.push(file_id);
     }
 
-    let count: i64 = sqlx::query_scalar(&sql).fetch_one(pool).await?;
+    let mut db_query = sqlx::query_scalar::<_, i64>(&sql);
+    for val in &binds {
+        db_query = db_query.bind(val);
+    }
+    let count = db_query.fetch_one(pool).await?;
 
     Ok(QueryResult {
         entities: vec![],
         relations: vec![],
         total_count: count,
-        query_description: format!("count of matching entities"),
+        query_description: "count of matching entities".to_string(),
     })
 }
 

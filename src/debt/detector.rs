@@ -11,12 +11,47 @@ pub enum DebtKind {
     TodoWithoutAction,
 }
 
+impl std::fmt::Display for DebtKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DebtKind::AbandonedSession => write!(f, "Abandoned Session"),
+            DebtKind::UnresolvedQuery => write!(f, "Unresolved Query"),
+            DebtKind::StaleDecision => write!(f, "Stale Decision"),
+            DebtKind::OpenRefactor => write!(f, "Open Refactor"),
+            DebtKind::TodoWithoutAction => write!(f, "TODO Without Action"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Severity {
     Low,
     Medium,
     High,
     Critical,
+}
+
+impl std::fmt::Display for Severity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Severity::Low => write!(f, "Low"),
+            Severity::Medium => write!(f, "Medium"),
+            Severity::High => write!(f, "High"),
+            Severity::Critical => write!(f, "Critical"),
+        }
+    }
+}
+
+impl Severity {
+    /// Returns the emoji indicator for this severity level
+    pub fn emoji(&self) -> &'static str {
+        match self {
+            Severity::Critical => "🔴",
+            Severity::High => "🟠",
+            Severity::Medium => "🟡",
+            Severity::Low => "🟢",
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

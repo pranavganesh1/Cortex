@@ -28,6 +28,43 @@ pub enum EntityKind {
     Note,
 }
 
+impl std::fmt::Display for EntityKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EntityKind::Commit => write!(f, "Commit"),
+            EntityKind::File => write!(f, "File"),
+            EntityKind::Function => write!(f, "Function"),
+            EntityKind::Struct => write!(f, "Struct"),
+            EntityKind::Class => write!(f, "Class"),
+            EntityKind::Enum => write!(f, "Enum"),
+            EntityKind::Trait => write!(f, "Trait"),
+            EntityKind::Interface => write!(f, "Interface"),
+            EntityKind::Module => write!(f, "Module"),
+            EntityKind::Decision => write!(f, "Decision"),
+            EntityKind::Note => write!(f, "Note"),
+        }
+    }
+}
+
+impl EntityKind {
+    /// Returns a short icon/symbol for compact display in tables
+    pub fn icon(&self) -> &'static str {
+        match self {
+            EntityKind::Function => "ƒ",
+            EntityKind::Struct => "S",
+            EntityKind::Class => "C",
+            EntityKind::Enum => "E",
+            EntityKind::Trait => "T",
+            EntityKind::Interface => "I",
+            EntityKind::File => "📄",
+            EntityKind::Commit => "📝",
+            EntityKind::Module => "📦",
+            EntityKind::Decision => "💡",
+            EntityKind::Note => "📌",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Relation {
     pub id: String,
@@ -44,6 +81,18 @@ pub enum RelationKind {
     Contains,
     DependsOn,
     DecidedIn,
+}
+
+impl std::fmt::Display for RelationKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RelationKind::Authored => write!(f, "Authored"),
+            RelationKind::Modified => write!(f, "Modified"),
+            RelationKind::Contains => write!(f, "Contains"),
+            RelationKind::DependsOn => write!(f, "DependsOn"),
+            RelationKind::DecidedIn => write!(f, "DecidedIn"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

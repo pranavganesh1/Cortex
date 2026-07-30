@@ -25,8 +25,8 @@ async fn execute_list(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRes
 
     // Entity kind filter
     if let Some(kind) = &query.entity_kind {
-        sql.push_str(&format!(" AND kind = '{:?}'", kind));
-        desc.push_str(&format!("{:?}s", kind));
+        sql.push_str(&format!(" AND kind = '{}'", kind));
+        desc.push_str(&format!("{}s", kind));
     } else {
         desc.push_str("entities");
     }
@@ -75,11 +75,11 @@ async fn execute_list(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRes
         for entity in &entities {
             let rel_sql = match rel.direction {
                 RelationDirection::From => format!(
-                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE from_id = '{}' AND kind = '{:?}'",
+                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE from_id = '{}' AND kind = '{}'",
                     entity.id, rel.kind
                 ),
                 RelationDirection::To => format!(
-                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE to_id = '{}' AND kind = '{:?}'",
+                    "SELECT id, from_id, to_id, kind, created_at FROM relations WHERE to_id = '{}' AND kind = '{}'",
                     entity.id, rel.kind
                 ),
             };
@@ -110,7 +110,7 @@ async fn execute_count(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRe
     let mut sql = String::from("SELECT COUNT(*) FROM entities WHERE 1=1");
 
     if let Some(kind) = &query.entity_kind {
-        sql.push_str(&format!(" AND kind = '{:?}'", kind));
+        sql.push_str(&format!(" AND kind = '{}'", kind));
     }
     if let Some(pattern) = &query.name_pattern {
         sql.push_str(&format!(" AND name LIKE '%{}%'", pattern));

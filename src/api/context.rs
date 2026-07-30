@@ -92,7 +92,7 @@ pub async fn assemble_context(pool: &SqlitePool, file_path: &str, user_query: &s
         output.push_str("\nSymbols in this file:\n");
         for child in &children {
             let icon = match child.kind.as_str() {
-                "Function" => "f",
+                "Function" => "ƒ",
                 "Struct" => "S",
                 "Class" => "C",
                 "Enum" => "E",

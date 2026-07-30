@@ -32,12 +32,7 @@ pub fn format_debt_report(debts: &[DebtItem]) -> String {
         output.push_str(&format!("{}\n{}\n", label, "─".repeat(50)));
         
         for item in items {
-            let emoji = match item.severity {
-                Severity::Critical => "🔴",
-                Severity::High => "🟠",
-                Severity::Medium => "🟡",
-                Severity::Low => "🟢",
-            };
+            let emoji = item.severity.emoji();
             let days = (chrono::Utc::now() - item.timestamp).num_days();
             let ago = if days == 0 { "today".into() } else { format!("{}d ago", days) };
             

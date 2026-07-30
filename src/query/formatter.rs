@@ -23,20 +23,6 @@ pub fn format_result(result: &QueryResult) -> String {
     ]);
 
     for entity in &result.entities {
-        let kind_emoji = match entity.kind {
-            EntityKind::Function => "f",
-            EntityKind::Struct => "S",
-            EntityKind::Class => "C",
-            EntityKind::Enum => "E",
-            EntityKind::Trait => "T",
-            EntityKind::Interface => "I",
-            EntityKind::File => "F",
-            EntityKind::Commit => "G",
-            EntityKind::Module => "M",
-            EntityKind::Decision => "💡",
-            EntityKind::Note => "N",
-        };
-
         let id_short = if entity.id.len() > 40 {
             format!("{}...", &entity.id[..40])
         } else {
@@ -44,7 +30,7 @@ pub fn format_result(result: &QueryResult) -> String {
         };
 
         table.add_row(vec![
-            Cell::new(format!("{} {:?}", kind_emoji, entity.kind)),
+            Cell::new(format!("{} {}", entity.kind.icon(), entity.kind)),
             Cell::new(&entity.name),
             Cell::new(&entity.source),
             Cell::new(id_short),
@@ -63,7 +49,7 @@ pub fn format_result(result: &QueryResult) -> String {
             let to_short = truncate(&rel.to_id, 30);
             rel_table.add_row(vec![
                 from_short,
-                format!("{:?}", rel.kind),
+                format!("{}", rel.kind),
                 to_short,
             ]);
         }

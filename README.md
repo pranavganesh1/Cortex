@@ -155,6 +155,21 @@ npx tsc
 | `cortex debt` | Cognitive debt dashboard |
 | `cortex weekly` | Monday morning briefing |
 | `cortex status` | Stats |
+| `cortex version` | Version and system environment information |
+
+---
+
+## API Endpoints (`http://127.0.0.1:8787`)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Server health check |
+| `/status` | GET | Database stats and entity counts |
+| `/context` | GET | Assemble project context (`file_path`, `query`) |
+| `/active-context` | GET | Assemble context for active editor file |
+| `/focus` | GET | Retrieve formatted current focus summary |
+| `/entities` | GET | List recent graph entities (`limit`, `kind`) |
+| `/relations` | GET | List recent graph relations (`limit`) |
 
 ---
 

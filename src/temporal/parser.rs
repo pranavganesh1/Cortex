@@ -165,7 +165,7 @@ fn parse_time_of_day(text: &str) -> Option<NaiveTime> {
     if let (Some(h_match), ampm_match) = (cap.get(1), cap.get(3)) {
         let hour: u32 = h_match.as_str().parse().ok()?;
         let minute: u32 = cap.get(2).map(|m| m.as_str().parse().unwrap_or(0)).unwrap_or(0);
-        let ampm = ampm_match.as_str().to_lowercase();
+        let ampm = ampm_match?.as_str().to_lowercase();
         
         let hour = match ampm.as_str() {
             "pm" if hour < 12 => hour + 12,

@@ -24,6 +24,8 @@ pub async fn start_server(pool: SqlitePool) -> anyhow::Result<()> {
         .route("/context", get(routes::context))
         .route("/active-context", get(routes::active_context))
         .route("/focus", get(routes::focus))
+        .route("/entities", get(routes::entities))
+        .route("/relations", get(routes::relations))
         .layer(cors)
         .with_state(state);
     

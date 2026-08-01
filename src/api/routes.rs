@@ -69,3 +69,56 @@ pub async fn focus(State(_state): State<super::AppState>) -> Result<String, Stri
     let output = crate::memory::formatter::format_focus();
     Ok(output)
 }
+
+#[derive(Deserialize)]
+pub struct ListParams {
+    limit: Option<usize>,
+    kind: Option<String>,
+}
+
+pub async fn entities(
+    State(state): State<super::AppState>,
+    Query(params): Query<ListParams>,
+) -> Result<Json<serde_json::Value>, String> {
+    let limit = params.limit.unwrap_or(20).min(100);
+    let rows: Vec<(String, String, String, String)> = if let Some(kind) = params.kind {
+        sqlx::query_as("SELECT id, kind, name, source FROM entities WHERE kind = ? ORDER BY created_at DESC LIMIT ?")
+            .bind(kind)
+            .bind(limit as i64)
+            .fetch_all(&state.pool)
+            .await
+            .map_err(|e| e.to_string())?
+    } else {
+        sqlx::query_as("SELECT id, kind, name, source FROM entities ORDER BY created_at DESC LIMIT ?")
+            .bind(limit as i64)
+            .fetch_all(&state.pool)
+            .await
+            .map_err(|e| e.to_string())?
+    };
+
+    let items: Vec<serde_json::Value> = rows.into_iter().map(|(id, kind, name, source)| {
+        json!({ "id": id, "kind": kind, "name": name, "source": source })
+    }).collect();
+
+    Ok(Json(json!({ "entities": items })))
+}
+
+pub async fn relations(
+    State(state): State<super::AppState>,
+    Query(params): Query<ListParams>,
+) -> Result<Json<serde_json::Value>, String> {
+    let limit = params.limit.unwrap_or(20).min(100);
+    let rows: Vec<(String, String, String, String)> = sqlx::query_as(
+        "SELECT id, from_id, to_id, kind FROM relations ORDER BY created_at DESC LIMIT ?"
+    )
+    .bind(limit as i64)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let items: Vec<serde_json::Value> = rows.into_iter().map(|(id, from_id, to_id, kind)| {
+        json!({ "id": id, "from_id": from_id, "to_id": to_id, "kind": kind })
+    }).collect();
+
+    Ok(Json(json!({ "relations": items })))
+}

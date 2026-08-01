@@ -13,7 +13,7 @@ pub async fn insert_entities(pool: &SqlitePool, entities: &[Entity]) -> anyhow::
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#
         )
         .bind(&e.id)
-        .bind(format!("{:?}", e.kind))
+        .bind(format!("{}", e.kind))
         .bind(&e.name)
         .bind(&e.content)
         .bind(e.created_at.to_rfc3339())
@@ -38,7 +38,7 @@ pub async fn insert_relations(pool: &SqlitePool, relations: &[Relation]) -> anyh
         .bind(&r.id)
         .bind(&r.from_id)
         .bind(&r.to_id)
-        .bind(format!("{:?}", r.kind))
+        .bind(format!("{}", r.kind))
         .bind(r.created_at.to_rfc3339())
         .execute(&mut *tx)
         .await?;
@@ -51,7 +51,7 @@ pub async fn upsert_entity(pool: &SqlitePool, entity: &Entity) -> anyhow::Result
     let updated = sqlx::query(
         "UPDATE entities SET kind = ?, name = ?, content = ?, updated_at = ?, source = ?, parent_id = ? WHERE id = ?"
     )
-    .bind(format!("{:?}", entity.kind))
+    .bind(format!("{}", entity.kind))
     .bind(&entity.name)
     .bind(&entity.content)
     .bind(entity.updated_at.to_rfc3339())
@@ -67,7 +67,7 @@ pub async fn upsert_entity(pool: &SqlitePool, entity: &Entity) -> anyhow::Result
             "INSERT INTO entities (id, kind, name, content, created_at, updated_at, source, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(&entity.id)
-        .bind(format!("{:?}", entity.kind))
+        .bind(format!("{}", entity.kind))
         .bind(&entity.name)
         .bind(&entity.content)
         .bind(entity.created_at.to_rfc3339())

@@ -112,6 +112,21 @@ impl WorkingMemory {
     pub fn recent_contexts(&self, n: usize) -> Vec<&ContextFrame> {
         self.all_contexts().into_iter().rev().take(n).collect()
     }
+
+    pub fn set_max_stack_depth(&mut self, depth: usize) {
+        self.max_stack_depth = depth;
+        while self.stack.len() > self.max_stack_depth && !self.stack.is_empty() {
+            self.stack.remove(0);
+        }
+    }
+
+    pub fn max_stack_depth(&self) -> usize {
+        self.max_stack_depth
+    }
+
+    pub fn context_count(&self) -> usize {
+        self.all_contexts().len()
+    }
 }
 
 // Thread-safe helpers
@@ -137,6 +152,16 @@ pub fn add_commit(hash: &str) {
     if let Ok(mut wm) = WORKING_MEMORY.lock() {
         wm.add_commit(hash);
     }
+}
+
+pub fn set_max_stack_depth(depth: usize) {
+    if let Ok(mut wm) = WORKING_MEMORY.lock() {
+        wm.set_max_stack_depth(depth);
+    }
+}
+
+pub fn context_count() -> usize {
+    WORKING_MEMORY.lock().map(|wm| wm.context_count()).unwrap_or(0)
 }
 
 pub fn with_current<F, R>(f: F) -> Option<R>
@@ -175,5 +200,19 @@ mod tests {
         let popped = wm.back();
         assert!(popped.is_some());
         assert_eq!(wm.stack().len(), 0);
+    }
+
+    #[test]
+    fn test_working_memory_custom_depth() {
+        let mut wm = WorkingMemory::new();
+        wm.set_max_stack_depth(2);
+        assert_eq!(wm.max_stack_depth(), 2);
+
+        wm.push_current();
+        wm.push_current();
+        wm.push_current();
+
+        assert_eq!(wm.stack().len(), 2);
+        assert_eq!(wm.context_count(), 3);
     }
 }

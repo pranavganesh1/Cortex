@@ -171,6 +171,12 @@ npx tsc
 | `/entities` | GET | List recent graph entities (`limit`, `kind`) |
 | `/relations` | GET | List recent graph relations (`limit`) |
 
+### Query & Export Capabilities
+
+- **Query Limits & Parser**: Supports natural language limits (`top 10 functions`, `first 5 commits`, `limit 20`).
+- **Working Memory Stack**: Configurable depth limit (`set_max_stack_depth`) with context tracking.
+- **Cognitive Debt Exports**: Terminal dashboard reports and structured JSON exports (`format_debt_json`).
+
 ---
 
 ## Why I Built This

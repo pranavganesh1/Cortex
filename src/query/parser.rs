@@ -31,6 +31,9 @@ pub fn parse_query(input: &str) -> ParsedQuery {
     // 6. Detect relations ("contains", "depends on", "authored by")
     let relation = detect_relation(&lower);
 
+    // 7. Detect limit ("top 10", "limit 5", "first 20")
+    let limit = detect_limit(&lower).unwrap_or(50);
+
     ParsedQuery {
         intent,
         entity_kind,
@@ -38,7 +41,7 @@ pub fn parse_query(input: &str) -> ParsedQuery {
         content_pattern,
         location,
         relation,
-        limit: 50,
+        limit,
     }
 }
 
@@ -110,6 +113,12 @@ fn detect_relation(text: &str) -> Option<RelationQuery> {
     }
 }
 
+fn detect_limit(text: &str) -> Option<usize> {
+    let re = Regex::new(r#"\b(?:limit|top|first|max)\s+(\d+)\b"#).ok()?;
+    let cap = re.captures(text)?;
+    cap.get(1)?.as_str().parse::<usize>().ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,5 +144,20 @@ mod tests {
         assert_eq!(q.entity_kind, Some(EntityKind::Function));
         assert_eq!(q.name_pattern, Some("handle_%".to_string()));
         assert_eq!(q.location, Some("src/api".to_string()));
+    }
+
+    #[test]
+    fn test_parse_query_limit() {
+        let q1 = parse_query("find top 10 functions in src/api");
+        assert_eq!(q1.limit, 10);
+
+        let q2 = parse_query("list first 5 commits");
+        assert_eq!(q2.limit, 5);
+
+        let q3 = parse_query("find functions limit 15");
+        assert_eq!(q3.limit, 15);
+
+        let q4 = parse_query("find struct named User");
+        assert_eq!(q4.limit, 50);
     }
 }

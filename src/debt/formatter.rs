@@ -83,3 +83,42 @@ pub fn format_weekly_report(debts: &[DebtItem]) -> String {
     
     out
 }
+
+pub fn format_debt_json(debts: &[DebtItem]) -> String {
+    let json_items: Vec<serde_json::Value> = debts
+        .iter()
+        .map(|d| {
+            serde_json::json!({
+                "kind": d.kind.to_string(),
+                "title": d.title,
+                "description": d.description,
+                "severity": d.severity.to_string(),
+                "timestamp": d.timestamp.to_rfc3339(),
+            })
+        })
+        .collect();
+
+    serde_json::to_string_pretty(&json_items).unwrap_or_else(|_| "[]".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_debt_json() {
+        let debts = vec![DebtItem {
+            kind: DebtKind::AbandonedSession,
+            title: "Uncommitted changes".into(),
+            description: "Session left active".into(),
+            severity: Severity::High,
+            timestamp: chrono::Utc::now(),
+            entity_id: None,
+        }];
+
+        let json = format_debt_json(&debts);
+        assert!(json.contains("Abandoned Session"));
+        assert!(json.contains("Uncommitted changes"));
+        assert!(json.contains("High"));
+    }
+}

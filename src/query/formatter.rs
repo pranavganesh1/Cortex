@@ -73,10 +73,88 @@ pub fn format_result(result: &QueryResult) -> String {
     output
 }
 
+pub fn format_result_json(result: &QueryResult) -> String {
+    let json_entities: Vec<serde_json::Value> = result
+        .entities
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id,
+                "name": e.name,
+                "kind": e.kind.to_string(),
+                "source": e.source,
+                "content": e.content,
+            })
+        })
+        .collect();
+
+    let json_relations: Vec<serde_json::Value> = result
+        .relations
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "from_id": r.from_id,
+                "to_id": r.to_id,
+                "kind": r.kind.to_string(),
+            })
+        })
+        .collect();
+
+    let payload = serde_json::json!({
+        "query_description": result.query_description,
+        "total_count": result.total_count,
+        "entities": json_entities,
+        "relations": json_relations,
+    });
+
+    serde_json::to_string_pretty(&payload).unwrap_or_else(|_| "{}".to_string())
+}
+
 fn truncate(s: &str, max: usize) -> String {
     if s.len() > max {
         format!("{}...", &s[..max])
     } else {
         s.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::models::Entity;
+
+    #[test]
+    fn test_format_result_empty() {
+        let res = QueryResult {
+            entities: vec![],
+            relations: vec![],
+            total_count: 0,
+            query_description: "functions".into(),
+        };
+        assert_eq!(format_result(&res), "No results found.");
+    }
+
+    #[test]
+    fn test_format_result_json() {
+        let now = chrono::Utc::now();
+        let res = QueryResult {
+            entities: vec![Entity {
+                id: "fn:main".into(),
+                name: "main".into(),
+                kind: EntityKind::Function,
+                source: "src/main.rs".into(),
+                content: Some("fn main() {}".into()),
+                created_at: now,
+                updated_at: now,
+                parent_id: None,
+            }],
+            relations: vec![],
+            total_count: 1,
+            query_description: "functions".into(),
+        };
+        let json = format_result_json(&res);
+        assert!(json.contains("fn:main"));
+        assert!(json.contains("Function"));
+        assert!(json.contains("src/main.rs"));
     }
 }

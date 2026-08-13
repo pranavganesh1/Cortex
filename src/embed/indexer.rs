@@ -2,6 +2,19 @@ use sqlx::SqlitePool;
 use anyhow::Result;
 use crate::embed::client::embed_text;
 
+pub fn prepare_indexing_text(name: &str, content: Option<&str>, max_lines: usize) -> String {
+    if let Some(c) = content {
+        let snippet = c.lines().take(max_lines).collect::<Vec<_>>().join("\n");
+        if snippet.trim().is_empty() {
+            name.to_string()
+        } else {
+            format!("{} {}", name, snippet)
+        }
+    } else {
+        name.to_string()
+    }
+}
+
 pub async fn index_entity(pool: &SqlitePool, entity_id: &str, text: &str) -> Result<()> {
     if text.trim().is_empty() {
         return Ok(());
@@ -35,11 +48,7 @@ pub async fn index_all_entities(pool: &SqlitePool) -> Result<usize> {
     println!("🔮 Indexing {} entities with Ollama (nomic-embed-text)...", total);
     
     for (id, name, content) in rows {
-        let text = if let Some(c) = content {
-            format!("{} {}", name, c.lines().take(20).collect::<Vec<_>>().join("\n"))
-        } else {
-            name
-        };
+        let text = prepare_indexing_text(&name, content.as_deref(), 20);
         
         match index_entity(pool, &id, &text).await {
             Ok(()) => {
@@ -59,8 +68,26 @@ pub async fn index_all_entities(pool: &SqlitePool) -> Result<usize> {
 }
 
 pub async fn index_file(pool: &SqlitePool, entity_id: &str, name: &str, content: &str) {
-    let text = format!("{} {}", name, content.lines().take(30).collect::<Vec<_>>().join("\n"));
+    let text = prepare_indexing_text(name, Some(content), 30);
     if let Err(e) = index_entity(pool, entity_id, &text).await {
         tracing::debug!("Embedding failed for {}: {}", entity_id, e);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prepare_indexing_text_with_content() {
+        let content = "line 1\nline 2\nline 3\nline 4";
+        let text = prepare_indexing_text("MyStruct", Some(content), 2);
+        assert_eq!(text, "MyStruct line 1\nline 2");
+    }
+
+    #[test]
+    fn test_prepare_indexing_text_no_content() {
+        let text = prepare_indexing_text("MyStruct", None, 5);
+        assert_eq!(text, "MyStruct");
     }
 }

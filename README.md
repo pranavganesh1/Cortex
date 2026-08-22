@@ -196,3 +196,10 @@ MIT
 ## Contributing
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+---
+
+## FAQ
+
+**Q: Is Cortex free?**  
+A: Yes, Cortex is free and open-source.

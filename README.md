@@ -203,3 +203,9 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 **Q: Is Cortex free?**  
 A: Yes, Cortex is free and open-source.
+
+---
+
+## Community
+
+Join our discord to stay up to date on all things Cortex!

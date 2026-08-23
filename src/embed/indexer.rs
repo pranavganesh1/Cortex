@@ -15,6 +15,7 @@ pub fn prepare_indexing_text(name: &str, content: Option<&str>, max_lines: usize
     }
 }
 
+/// Generates an embedding for the given text and stores it in the database.
 pub async fn index_entity(pool: &SqlitePool, entity_id: &str, text: &str) -> Result<()> {
     if text.trim().is_empty() {
         return Ok(());

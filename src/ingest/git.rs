@@ -5,6 +5,7 @@ use git2::Repository;
 use anyhow::Result;
 use sqlx::SqlitePool;
 
+/// Ingests a Git repository by analyzing its commit history and converting it to entities.
 pub async fn ingest_repo(path: &str, pool: &SqlitePool) -> Result<(Vec<Entity>, Vec<Relation>)> {
     let repo = Repository::open(path)?;
     let mut entities = Vec::new();

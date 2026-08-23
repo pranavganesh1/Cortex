@@ -3,6 +3,7 @@ use crate::core::models::{Entity, EntityKind, Relation};
 use sqlx::SqlitePool;
 use anyhow::Result;
 
+/// Executes a parsed query against the SQLite database.
 pub async fn execute_query(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryResult> {
     match query.intent {
         QueryIntent::Count => execute_count(pool, query).await,

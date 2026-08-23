@@ -5,6 +5,7 @@ pub mod formatter;
 use crate::core::models::{EntityKind, RelationKind};
 
 
+/// Represents a parsed natural language query translated into query parameters.
 #[derive(Debug, Clone)]
 pub struct ParsedQuery {
     pub intent: QueryIntent,

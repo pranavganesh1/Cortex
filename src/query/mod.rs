@@ -1,3 +1,4 @@
+// Query module definitions
 pub mod parser;
 pub mod executor;
 pub mod formatter;

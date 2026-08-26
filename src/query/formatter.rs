@@ -1,3 +1,4 @@
+// Result formatting utilities
 use super::executor::QueryResult;
 use comfy_table::{Table, Cell, Attribute, ContentArrangement};
 use crate::core::models::EntityKind;

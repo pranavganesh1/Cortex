@@ -103,3 +103,43 @@ pub struct Event {
     pub timestamp: DateTime<Utc>,
     pub metadata: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_entity_kind_display_and_icon() {
+        assert_eq!(EntityKind::Function.to_string(), "Function");
+        assert_eq!(EntityKind::Function.icon(), "ƒ");
+        assert_eq!(EntityKind::Struct.to_string(), "Struct");
+        assert_eq!(EntityKind::Struct.icon(), "S");
+        assert_eq!(EntityKind::Class.to_string(), "Class");
+        assert_eq!(EntityKind::Class.icon(), "C");
+        assert_eq!(EntityKind::Enum.to_string(), "Enum");
+        assert_eq!(EntityKind::Enum.icon(), "E");
+        assert_eq!(EntityKind::Trait.to_string(), "Trait");
+        assert_eq!(EntityKind::Trait.icon(), "T");
+        assert_eq!(EntityKind::Interface.to_string(), "Interface");
+        assert_eq!(EntityKind::Interface.icon(), "I");
+        assert_eq!(EntityKind::File.to_string(), "File");
+        assert_eq!(EntityKind::File.icon(), "📄");
+        assert_eq!(EntityKind::Commit.to_string(), "Commit");
+        assert_eq!(EntityKind::Commit.icon(), "📝");
+        assert_eq!(EntityKind::Module.to_string(), "Module");
+        assert_eq!(EntityKind::Module.icon(), "📦");
+        assert_eq!(EntityKind::Decision.to_string(), "Decision");
+        assert_eq!(EntityKind::Decision.icon(), "💡");
+        assert_eq!(EntityKind::Note.to_string(), "Note");
+        assert_eq!(EntityKind::Note.icon(), "📌");
+    }
+
+    #[test]
+    fn test_relation_kind_display() {
+        assert_eq!(RelationKind::Authored.to_string(), "Authored");
+        assert_eq!(RelationKind::Modified.to_string(), "Modified");
+        assert_eq!(RelationKind::Contains.to_string(), "Contains");
+        assert_eq!(RelationKind::DependsOn.to_string(), "DependsOn");
+        assert_eq!(RelationKind::DecidedIn.to_string(), "DecidedIn");
+    }
+}

@@ -301,3 +301,32 @@ async fn detect_old_todos(pool: &SqlitePool) -> Result<Vec<DebtItem>> {
     }
     Ok(debts)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_debt_kind_display() {
+        assert_eq!(DebtKind::AbandonedSession.to_string(), "Abandoned Session");
+        assert_eq!(DebtKind::UnresolvedQuery.to_string(), "Unresolved Query");
+        assert_eq!(DebtKind::StaleDecision.to_string(), "Stale Decision");
+        assert_eq!(DebtKind::OpenRefactor.to_string(), "Open Refactor");
+        assert_eq!(DebtKind::TodoWithoutAction.to_string(), "TODO Without Action");
+    }
+
+    #[test]
+    fn test_severity_display_and_emoji() {
+        assert_eq!(Severity::Critical.to_string(), "Critical");
+        assert_eq!(Severity::Critical.emoji(), "🔴");
+
+        assert_eq!(Severity::High.to_string(), "High");
+        assert_eq!(Severity::High.emoji(), "🟠");
+
+        assert_eq!(Severity::Medium.to_string(), "Medium");
+        assert_eq!(Severity::Medium.emoji(), "🟡");
+
+        assert_eq!(Severity::Low.to_string(), "Low");
+        assert_eq!(Severity::Low.emoji(), "🟢");
+    }
+}

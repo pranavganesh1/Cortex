@@ -64,7 +64,7 @@ pub async fn get_timeline(pool: &SqlitePool, range: &TimeRange) -> Result<Vec<Wo
         match &mut current_session {
             None => current_session = Some((evt.0, vec![evt])),
             Some((_start, buffer)) => {
-                if evt.0 - buffer.last().unwrap().0 > Duration::minutes(30) {
+                if evt.0 - buffer.last().expect("Buffer should not be empty when checking session gap").0 > Duration::minutes(30) {
                     // Finalize previous session
                     sessions.push(build_session(buffer));
                     current_session = Some((evt.0, vec![evt]));
@@ -83,8 +83,8 @@ pub async fn get_timeline(pool: &SqlitePool, range: &TimeRange) -> Result<Vec<Wo
 }
 
 fn build_session(events: &[(DateTime<Utc>, String, String, Option<String>)]) -> WorkSession {
-    let start = events.first().unwrap().0;
-    let end = events.last().unwrap().0;
+    let start = events.first().expect("Events should not be empty when building session").0;
+    let end = events.last().expect("Events should not be empty when building session").0;
     let duration = (end - start).num_minutes();
 
     let mut files = std::collections::HashSet::new();

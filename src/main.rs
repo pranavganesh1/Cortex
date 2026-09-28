@@ -15,14 +15,15 @@ async fn main() -> anyhow::Result<()> {
         .join(".cortex")
         .join("cortex.db");
 
-    std::fs::create_dir_all(db_path.parent().unwrap())?;
+    std::fs::create_dir_all(db_path.parent().expect("Failed to get parent directory of database path"))?;
     let pool = connection::connect(&db_path).await?;
     schema::init_db(&pool).await?;
 
     match cli.command {
         Commands::Ingest { path } => {
             info!("Ingesting repo at {}", path.display());
-            let (entities, relations) = ingest_repo(path.to_str().unwrap(), &pool).await?;
+            let path_str = path.to_str().expect("Invalid UTF-8 in path argument");
+let (entities, relations) = ingest_repo(path_str, &pool).await?;
             info!("Found {} entities, {} relations", entities.len(), relations.len());
             insert_entities(&pool, &entities).await?;
             insert_relations(&pool, &relations).await?;
@@ -119,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
             let range = cortex::temporal::parser::parse_time_expression(&when)
                 .unwrap_or_else(|| {
                     println!("⚠️ Could not parse '{}'. Using 'today'.", when);
-                    cortex::temporal::parser::parse_time_expression("today").unwrap()
+                    cortex::temporal::parser::parse_time_expression("today").expect("Failed to parse fallback time expression 'today'")
                 });
             
             let sessions = cortex::temporal::reconstructor::get_timeline(&pool, &range).await?;
@@ -130,7 +131,7 @@ async fn main() -> anyhow::Result<()> {
             let range = cortex::temporal::parser::parse_time_expression(&when)
                 .unwrap_or_else(|| {
                     println!("⚠️ Could not parse '{}'. Using '2 hours ago'.", when);
-                    cortex::temporal::parser::parse_time_expression("2 hours ago").unwrap()
+                    cortex::temporal::parser::parse_time_expression("2 hours ago").expect("Failed to parse fallback time expression '2 hours ago'")
                 });
             
             let point = if range.is_point {

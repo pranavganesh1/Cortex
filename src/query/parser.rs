@@ -69,15 +69,15 @@ fn detect_entity_kind(text: &str) -> Option<EntityKind> {
 
 fn detect_location(text: &str) -> Option<String> {
     // "in src/main.rs", "in file src/main.rs", "in the database module"
-    let re = Regex::new(r#"\bin\s+(?:file\s+|the\s+)?([a-zA-Z0-9_./\-]+)"#).ok()?;
-    re.captures(text).map(|cap| cap.get(1).unwrap().as_str().to_string())
+    let re = Regex::new(r#"\bin\s+(?:file\s+|the\s+)?([a-zA-Z0-9_./\-]+)"#).expect("Failed to compile location detection regex");
+    re.captures(text).map(|cap| cap.get(1).expect("Location regex matched but no capture group 1").as_str().to_string())
 }
 
 fn detect_name_pattern(text: &str) -> Option<String> {
     // "named handle_request", "called User", "named handle_*"
-    let re = Regex::new(r#"(?:named|called)\s+([a-zA-Z0-9_*]+)"#).ok()?;
+    let re = Regex::new(r#"(?:named|called)\s+([a-zA-Z0-9_*]+)"#).expect("Failed to compile name pattern detection regex");
     re.captures(text).map(|cap| {
-        let raw = cap.get(1).unwrap().as_str().to_string();
+        let raw = cap.get(1).expect("Name pattern regex matched but no capture group 1").as_str().to_string();
         // Convert * to SQL wildcard %
         raw.replace('*', "%")
     })
@@ -85,8 +85,8 @@ fn detect_name_pattern(text: &str) -> Option<String> {
 
 fn detect_content_pattern(text: &str) -> Option<String> {
     // "about authentication", "handling errors", "related to payment"
-    let re = Regex::new(r#"(?:about|handling|related to|for|that handles|that does)\s+([a-zA-Z0-9_ ]+)"#).ok()?;
-    re.captures(text).map(|cap| cap.get(1).unwrap().as_str().to_string())
+    let re = Regex::new(r#"(?:about|handling|related to|for|that handles|that does)\s+([a-zA-Z0-9_ ]+)"#).expect("Failed to compile content pattern detection regex");
+    re.captures(text).map(|cap| cap.get(1).expect("Content pattern regex matched but no capture group 1").as_str().to_string())
 }
 
 fn detect_relation(text: &str) -> Option<RelationQuery> {

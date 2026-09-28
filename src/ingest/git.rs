@@ -22,7 +22,7 @@ pub async fn ingest_repo(path: &str, pool: &SqlitePool) -> Result<(Vec<Entity>, 
         let author_name = author.name().unwrap_or("unknown").to_string();
         let author_id = format!("author:{}", author_name);
         let message = commit.message().unwrap_or("").to_string();
-        let time = Utc.timestamp_opt(commit.time().seconds(), 0).unwrap();
+        let time = Utc.timestamp_opt(commit.time().seconds(), 0).expect("Failed to parse git commit timestamp");
 
         // Author entity
         entities.push(Entity {

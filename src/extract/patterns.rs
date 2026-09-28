@@ -6,40 +6,40 @@ use once_cell::sync::Lazy;
 pub static DECISION_PATTERNS: Lazy<Vec<Regex>> = Lazy::new(|| {
     vec![
         // "We chose X because Y"
-        Regex::new(r"(?i)(?:chose|chosen|choose|picked|selected|went with|settled on)\s+(\w+(?:\s+\w+){0,5})\s+(?:because|since|as|due to|for)\s+(.{3,200})").unwrap(),
-        
+        Regex::new(r"(?i)(?:chose|chosen|choose|picked|selected|went with|settled on)\s+(\w+(?:\s+\w+){0,5})\s+(?:because|since|as|due to|for)\s+(.{3,200})").expect("Failed to compile decision pattern: chose X because Y"),
+
         // "Decided to use X over Y because Z"
-        Regex::new(r"(?i)(?:decided|decision)\s+(?:to\s+)?(?:use|go with|adopt|migrate to|switch to)\s+(\w+(?:\s+\w+){0,5})\s+(?:over|instead of|rather than|vs\.?)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:because|since|as|due to|for)\s+(.{3,200}))?").unwrap(),
-        
+        Regex::new(r"(?i)(?:decided|decision)\s+(?:to\s+)?(?:use|go with|adopt|migrate to|switch to)\s+(\w+(?:\s+\w+){0,5})\s+(?:over|instead of|rather than|vs\.?)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:because|since|as|due to|for)\s+(.{3,200}))?").expect("Failed to compile decision pattern: decided to use X over Y because Z"),
+
         // "Switched from X to Y due to Z"
-        Regex::new(r"(?i)(?:switched|migrated|moved|transitioned|converted)\s+(?:from\s+)?(\w+(?:\s+\w+){0,5})\s+to\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:due to|because of|thanks to|owing to)\s+(.{3,200}))?").unwrap(),
-        
+        Regex::new(r"(?i)(?:switched|migrated|moved|transitioned|converted)\s+(?:from\s+)?(\w+(?:\s+\w+){0,5})\s+to\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:due to|because of|thanks to|owing to)\s+(.{3,200}))?").expect("Failed to compile decision pattern: switched from X to Y due to Z"),
+
         // "Using X instead of Y because Z"
-        Regex::new(r"(?i)(?:using|use|went with)\s+(\w+(?:\s+\w+){0,5})\s+(?:instead of|rather than|over|not)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:because|since|as)\s+(.{3,200}))?").unwrap(),
-        
+        Regex::new(r"(?i)(?:using|use|went with)\s+(\w+(?:\s+\w+){0,5})\s+(?:instead of|rather than|over|not)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:because|since|as)\s+(.{3,200}))?").expect("Failed to compile decision pattern: using X instead of Y because Z"),
+
         // "Replaced X with Y for Z"
-        Regex::new(r"(?i)(?:replaced?|substituted?|swapped)\s+(\w+(?:\s+\w+){0,5})\s+(?:with|by|for)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:to|for|so|in order to)\s+(.{3,200}))?").unwrap(),
-        
+        Regex::new(r"(?i)(?:replaced?|substituted?|swapped)\s+(\w+(?:\s+\w+){0,5})\s+(?:with|by|for)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:to|for|so|in order to)\s+(.{3,200}))?").expect("Failed to compile decision pattern: replaced X with Y for Z"),
+
         // "Don't use X — causes Y" / "Avoid X because Y"
-        Regex::new(r"(?i)(?:don't|do not|avoid|never|stop)\s+(?:use|using)\s+(\w+(?:\s+\w+){0,5})(?:\s*[—–-]\s*|\s+because\s+|\s*:?\s*)(.{3,200})").unwrap(),
-        
+        Regex::new(r"(?i)(?:don't|do not|avoid|never|stop)\s+(?:use|using)\s+(\w+(?:\s+\w+){0,5})(?:\s*[—–-]\s*|\s+because\s+|\s*:?\s*)(.{3,200})").expect("Failed to compile decision pattern: don't use X because Y"),
+
         // "Added X to solve Y"
-        Regex::new(r"(?i)(?:added|introduced|brought in|implemented)\s+(\w+(?:\s+\w+){0,5})\s+(?:to|in order to|so we can|for)\s+(.{3,200})").unwrap(),
-        
+        Regex::new(r"(?i)(?:added|introduced|brought in|implemented)\s+(\w+(?:\s+\w+){0,5})\s+(?:to|in order to|so we can|for)\s+(.{3,200})").expect("Failed to compile decision pattern: added X to solve Y"),
+
         // "Removed X because Y"
-        Regex::new(r"(?i)(?:removed|deleted|dropped|got rid of|eliminated)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:because|since|as|due to|after)\s+(.{3,200}))?").unwrap(),
-        
+        Regex::new(r"(?i)(?:removed|deleted|dropped|got rid of|eliminated)\s+(\w+(?:\s+\w+){0,5})(?:\s+(?:because|since|as|due to|after)\s+(.{3,200}))?").expect("Failed to compile decision pattern: removed X because Y"),
+
         // "Use X for Y" (weaker signal, needs context)
-        Regex::new(r"(?i)(?:we\s+)?(?:use|using|utilize)\s+(\w+(?:\s+\w+){0,5})\s+(?:for|to|in order to)\s+(.{3,200})").unwrap(),
+        Regex::new(r"(?i)(?:we\s+)?(?:use|using|utilize)\s+(\w+(?:\s+\w+){0,5})\s+(?:for|to|in order to)\s+(.{3,200})").expect("Failed to compile decision pattern: use X for Y"),
     ]
 });
 
 /// Code comment decision markers
 pub static COMMENT_DECISION_MARKERS: Lazy<Vec<Regex>> = Lazy::new(|| {
     vec![
-        Regex::new(r"(?i)(?:TODO|NOTE|HACK|FIXME|DECISION|REVIEW|OPTIMIZE|WARN):\s*(.{5,300})").unwrap(),
-        Regex::new(r"(?i)(?:we|i)\s+(?:chose|picked|decided|went with)\s+(.{5,200})").unwrap(),
-        Regex::new(r"(?i)(?:this\s+is|we're|we are)\s+(?:using|running on|built with)\s+(.{5,200})").unwrap(),
+        Regex::new(r"(?i)(?:TODO|NOTE|HACK|FIXME|DECISION|REVIEW|OPTIMIZE|WARN):\s*(.{5,300})").expect("Failed to compile comment decision marker: TODO/NOTE/etc."),
+        Regex::new(r"(?i)(?:we|i)\s+(?:chose|picked|decided|went with)\s+(.{5,200})").expect("Failed to compile comment decision marker: we/i chose/picked/etc."),
+        Regex::new(r"(?i)(?:this\s+is|we're|we are)\s+(?:using|running on|built with)\s+(.{5,200})").expect("Failed to compile comment decision marker: this is/we're using"),
     ]
 });
 

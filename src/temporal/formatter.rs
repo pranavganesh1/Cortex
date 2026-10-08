@@ -140,3 +140,75 @@ pub fn format_mental_state(state: &MentalState) -> String {
 
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+
+    #[test]
+    fn test_format_timeline_empty() {
+        let output = format_timeline(&[]);
+        assert_eq!(output, "No activity recorded in this period.");
+    }
+
+    #[test]
+    fn test_format_timeline_with_sessions() {
+        let start = Utc.with_ymd_and_hms(2026, 7, 22, 14, 0, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 7, 22, 15, 30, 0).unwrap();
+        let session = WorkSession {
+            start,
+            end,
+            duration_minutes: 90,
+            files_touched: vec!["src/main.rs".to_string(), "src/lib.rs".to_string()],
+            commits: vec!["fix: typo in main".to_string()],
+            queries: vec!["where is config?".to_string()],
+            decisions: vec!["use clap for cli".to_string()],
+            active_file: Some("src/main.rs".to_string()),
+        };
+
+        let output = format_timeline(&[session]);
+        assert!(output.contains("1 work sessions found"));
+        assert!(output.contains("1h 30m"));
+        assert!(output.contains("Focus: src/main.rs"));
+        assert!(output.contains("2 files touched"));
+        assert!(output.contains("fix: typo in main"));
+        assert!(output.contains("\"where is config?\""));
+        assert!(output.contains("1 decisions recorded"));
+    }
+
+    #[test]
+    fn test_format_mental_state() {
+        let now = Utc.with_ymd_and_hms(2026, 7, 22, 15, 0, 0).unwrap();
+        let session = WorkSession {
+            start: now,
+            end: now,
+            duration_minutes: 25,
+            files_touched: vec!["src/lib.rs".to_string()],
+            commits: vec![],
+            queries: vec![],
+            decisions: vec![],
+            active_file: Some("src/lib.rs".to_string()),
+        };
+
+        let state = MentalState {
+            timestamp: now,
+            session,
+            active_file: Some("src/lib.rs".to_string()),
+            recent_commits: vec!["init commit".to_string()],
+            recent_decisions: vec!["decision A".to_string()],
+            recent_queries: vec!["query A".to_string()],
+            files_in_session: vec!["src/lib.rs".to_string(), "src/main.rs".to_string()],
+        };
+
+        let output = format_mental_state(&state);
+        assert!(output.contains("MENTAL STATE RECONSTRUCTION"));
+        assert!(output.contains("Active file: src/lib.rs"));
+        assert!(output.contains("25m"));
+        assert!(output.contains("Files in this session (2)"));
+        assert!(output.contains("Recent commits:"));
+        assert!(output.contains("Decisions nearby:"));
+        assert!(output.contains("Questions you asked:"));
+        assert!(output.contains("You were working on 2 files, primarily src/lib.rs"));
+    }
+}

@@ -15,6 +15,7 @@ struct EmbedResponse {
     embedding: Vec<f32>,
 }
 
+/// Request embeddings for the provided text using the local Ollama instance.
 pub async fn embed_text(text: &str) -> Result<Vec<f32>> {
     let client = reqwest::Client::new();
     let req = EmbedRequest {
@@ -36,6 +37,7 @@ pub async fn embed_text(text: &str) -> Result<Vec<f32>> {
     Ok(body.embedding)
 }
 
+/// Check if the local Ollama daemon is reachable.
 pub async fn check_ollama() -> bool {
     reqwest::Client::new()
         .get("http://localhost:11434")

@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-#[derive(Parser)]
+#[derive(Parser, Debug, PartialEq)]
 #[command(name = "cortex")]
 #[command(about = "Universal AI memory layer")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
@@ -10,7 +10,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug, PartialEq)]
 pub enum Commands {
     /// Ingest Git history (one-time)
     Ingest {
@@ -61,4 +61,72 @@ pub enum Commands {
     Status,
     /// Show version and build information
     Version,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_cli_focus() {
+        let args = ["cortex", "focus"];
+        let cli = Cli::try_parse_from(args).expect("Failed to parse focus command");
+        assert_eq!(cli.command, Commands::Focus);
+    }
+
+    #[test]
+    fn test_parse_cli_ask() {
+        let args = ["cortex", "ask", "why sqlite?"];
+        let cli = Cli::try_parse_from(args).expect("Failed to parse ask command");
+        assert_eq!(
+            cli.command,
+            Commands::Ask {
+                query: "why sqlite?".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_cli_search_defaults_and_flags() {
+        let default_args = ["cortex", "search", "authentication"];
+        let cli = Cli::try_parse_from(default_args).expect("Failed to parse search command");
+        assert_eq!(
+            cli.command,
+            Commands::Search {
+                query: "authentication".to_string(),
+                limit: 10
+            }
+        );
+
+        let flag_args = ["cortex", "search", "authentication", "-l", "5"];
+        let cli_flag = Cli::try_parse_from(flag_args).expect("Failed to parse search with flag");
+        assert_eq!(
+            cli_flag.command,
+            Commands::Search {
+                query: "authentication".to_string(),
+                limit: 5
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_cli_timeline_default() {
+        let args = ["cortex", "timeline"];
+        let cli = Cli::try_parse_from(args).expect("Failed to parse timeline command");
+        assert_eq!(
+            cli.command,
+            Commands::Timeline {
+                when: "today".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_cli_debt_and_status() {
+        let debt_cli = Cli::try_parse_from(["cortex", "debt"]).unwrap();
+        assert_eq!(debt_cli.command, Commands::Debt);
+
+        let status_cli = Cli::try_parse_from(["cortex", "status"]).unwrap();
+        assert_eq!(status_cli.command, Commands::Status);
+    }
 }

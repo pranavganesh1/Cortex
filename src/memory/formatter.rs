@@ -189,3 +189,41 @@ pub fn format_back_result(prev: &ContextFrame) -> String {
     
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_back_result() {
+        let mut frame = ContextFrame::new("ctx-test".to_string());
+        frame.topic = "auth-module".to_string();
+        frame.files.push("src/auth/jwt.rs".to_string());
+        frame.decisions.push("Use RS256 for token signing".to_string());
+
+        let formatted = format_back_result(&frame);
+        assert!(formatted.contains("CONTEXT RESTORED"));
+        assert!(formatted.contains("Restored: auth-module"));
+        assert!(formatted.contains("src/auth/jwt.rs"));
+        assert!(formatted.contains("Use RS256 for token signing"));
+    }
+
+    #[test]
+    fn test_format_focus_runs() {
+        let output = format_focus();
+        assert!(output.contains("CURRENT FOCUS"));
+        assert!(output.contains("Topic:"));
+    }
+
+    #[test]
+    fn test_format_stack_runs() {
+        let output = format_stack();
+        assert!(output.contains("WORKING MEMORY STACK"));
+    }
+
+    #[test]
+    fn test_format_where_was_i_runs() {
+        let output = format_where_was_i();
+        assert!(output.contains("WHERE WAS I?"));
+    }
+}

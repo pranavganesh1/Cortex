@@ -5,7 +5,7 @@ use chrono::Utc;
 use anyhow::Result;
 use super::patterns::{DECISION_PATTERNS, COMMENT_DECISION_MARKERS, score_decision};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExtractedDecision {
     pub text: String,
     pub choice: String,        // what was chosen
@@ -16,7 +16,7 @@ pub struct ExtractedDecision {
     pub source_kind: SourceKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SourceKind {
     CommitMessage,
     CodeComment,
@@ -178,4 +178,51 @@ fn sanitize(s: &str) -> String {
         .take(40)
         .collect::<String>()
         .to_lowercase()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize() {
+        assert_eq!(sanitize("use sqlite"), "use_sqlite");
+        assert_eq!(sanitize("Stripe-vs-PayPal!!"), "stripe_vs_paypal__");
+        let long = "a".repeat(50);
+        assert_eq!(sanitize(&long).len(), 40);
+    }
+
+    #[test]
+    fn test_extract_reason() {
+        assert_eq!(
+            extract_reason("chose redis because it is fast and simple"),
+            Some("it is fast and simple".to_string())
+        );
+        assert_eq!(
+            extract_reason("switched to tokio due to async ecosystem"),
+            Some("async ecosystem".to_string())
+        );
+        assert_eq!(extract_reason("no reason specified"), None);
+    }
+
+    #[test]
+    fn test_extract_from_text_valid_decision() {
+        let text = "We chose PostgreSQL because of jsonb support";
+        let decisions = extract_from_text(text, "commit_1", SourceKind::CommitMessage);
+        assert!(!decisions.is_empty());
+        let d = &decisions[0];
+        assert_eq!(d.choice, "PostgreSQL");
+        assert_eq!(d.source, "commit_1");
+        assert_eq!(d.source_kind, SourceKind::CommitMessage);
+        assert!(d.confidence >= 40);
+    }
+
+    #[test]
+    fn test_extract_from_comments() {
+        let comment_text = "// DECISION: choose axum for api server\n// regular comment here\n";
+        let decisions = extract_from_comments(comment_text, "src/server.rs");
+        assert!(!decisions.is_empty());
+        assert_eq!(decisions[0].source_kind, SourceKind::CodeComment);
+        assert_eq!(decisions[0].source, "src/server.rs");
+    }
 }

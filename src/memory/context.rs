@@ -65,8 +65,9 @@ impl ContextFrame {
             return;
         }
 
+        let normalized: Vec<String> = self.files.iter().map(|f| f.replace('\\', "/")).collect();
         // Find longest common path prefix
-        let parts: Vec<Vec<&str>> = self.files.iter()
+        let parts: Vec<Vec<&str>> = normalized.iter()
             .map(|f| f.split('/').collect())
             .collect();
 
@@ -108,19 +109,92 @@ impl ContextFrame {
 
     pub fn is_related_to_file(&self, path: &str) -> bool {
         // Related if same directory or same file
-        let path_parts: Vec<&str> = path.split('/').collect();
+        let norm_path = path.replace('\\', "/");
+        let path_parts: Vec<&str> = norm_path.split('/').collect();
         for file in &self.files {
-            let file_parts: Vec<&str> = file.split('/').collect();
+            let norm_file = file.replace('\\', "/");
+            let file_parts: Vec<&str> = norm_file.split('/').collect();
             // Check if they share a parent directory
             let min_len = path_parts.len().min(file_parts.len()).saturating_sub(1);
             if min_len > 0 && path_parts[..min_len] == file_parts[..min_len] {
                 return true;
             }
             // Or if it's literally the same file
-            if file == path {
+            if norm_file == norm_path {
                 return true;
             }
         }
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+
+    #[test]
+    fn test_context_frame_creation_and_touch() {
+        let mut frame = ContextFrame::new("test-1".to_string());
+        assert_eq!(frame.id, "test-1");
+        assert_eq!(frame.topic, "untitled");
+        assert!(frame.files.is_empty());
+
+        let prev = frame.last_active;
+        frame.touch();
+        assert!(frame.last_active >= prev);
+    }
+
+    #[test]
+    fn test_add_items() {
+        let mut frame = ContextFrame::new("test-2".to_string());
+        frame.add_file("src/lib.rs");
+        frame.add_decision("use sqlite");
+        frame.add_query("how to query?");
+        frame.add_commit("abcdef1");
+
+        assert_eq!(frame.files, vec!["src/lib.rs"]);
+        assert_eq!(frame.decisions, vec!["use sqlite"]);
+        assert_eq!(frame.queries, vec!["how to query?"]);
+        assert_eq!(frame.commits, vec!["abcdef1"]);
+    }
+
+    #[test]
+    fn test_infer_topic_common_prefix() {
+        let mut frame = ContextFrame::new("test-3".to_string());
+        frame.add_file("src/api/routes.rs");
+        frame.add_file("src/api/context.rs");
+
+        assert_eq!(frame.topic, "src/api");
+    }
+
+    #[test]
+    fn test_infer_topic_windows_paths() {
+        let mut frame = ContextFrame::new("test-4".to_string());
+        frame.add_file("src\\db\\models.rs");
+        frame.add_file("src\\db\\schema.rs");
+
+        assert_eq!(frame.topic, "src/db");
+    }
+
+    #[test]
+    fn test_is_related_to_file() {
+        let mut frame = ContextFrame::new("test-5".to_string());
+        frame.add_file("src/core/models.rs");
+
+        assert!(frame.is_related_to_file("src/core/events.rs"));
+        assert!(frame.is_related_to_file("src\\core\\events.rs"));
+        assert!(frame.is_related_to_file("src/core/models.rs"));
+        assert!(!frame.is_related_to_file("tests/integration.rs"));
+    }
+
+    #[test]
+    fn test_is_stale() {
+        let mut frame = ContextFrame::new("test-6".to_string());
+        let now = Utc::now();
+        frame.last_active = now - Duration::minutes(20);
+
+        assert!(frame.is_stale(now, 15));
+        assert!(!frame.is_stale(now, 30));
     }
 }

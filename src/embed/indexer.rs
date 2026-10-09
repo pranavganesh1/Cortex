@@ -24,12 +24,13 @@ pub async fn index_entity(pool: &SqlitePool, entity_id: &str, text: &str) -> Res
     let embedding = embed_text(text).await?;
     let vector_json = serde_json::to_string(&embedding)?;
     
+    let model = crate::embed::client::embedding_model();
     sqlx::query(
         "INSERT OR REPLACE INTO embeddings (entity_id, vector, model, created_at) VALUES (?, ?, ?, ?)"
     )
     .bind(entity_id)
     .bind(&vector_json)
-    .bind("nomic-embed-text")
+    .bind(&model)
     .bind(chrono::Utc::now().to_rfc3339())
     .execute(pool)
     .await?;
@@ -46,7 +47,8 @@ pub async fn index_all_entities(pool: &SqlitePool) -> Result<usize> {
     
     let total = rows.len();
     let mut count = 0;
-    println!("🔮 Indexing {} entities with Ollama (nomic-embed-text)...", total);
+    let model = crate::embed::client::embedding_model();
+    println!("🔮 Indexing {} entities with Ollama ({})...", total, model);
     
     for (id, name, content) in rows {
         let text = prepare_indexing_text(&name, content.as_deref(), 20);

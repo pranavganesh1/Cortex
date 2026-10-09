@@ -25,7 +25,7 @@ const JS_QUERY: &str = r#"
 
 const TS_QUERY: &str = r#"
     (function_declaration name: (identifier) @func)
-    (class_declaration name: (identifier) @class)
+    (class_declaration name: (type_identifier) @class)
     (method_definition name: (property_identifier) @method)
     (interface_declaration name: (type_identifier) @interface)
     (type_alias_declaration name: (type_identifier) @type)
@@ -37,6 +37,8 @@ const GO_QUERY: &str = r#"
     (type_spec name: (type_identifier) @type)
 "#;
 
+/// Parses the code file into entities and structural relationships using tree-sitter.
+/// Returns `None` if the file extension is not supported or parsing fails.
 pub fn parse_file(path: &Path, content: &str) -> Option<(Vec<Entity>, Vec<Relation>)> {
     let ext = path.extension()?.to_str()?;
     let (language, query_str): (Language, &str) = match ext {
@@ -111,4 +113,125 @@ pub fn parse_file(path: &Path, content: &str) -> Option<(Vec<Entity>, Vec<Relati
 
     Some((entities, relations))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_rust_file() {
+        let code = r#"
+pub struct ServiceConfig {
+    pub port: u16,
+}
+
+pub enum LogLevel {
+    Info,
+    Error,
+}
+
+pub trait Runner {
+    fn run(&self);
+}
+
+pub fn start_server() {
+}
+"#;
+        let result = parse_file(Path::new("src/server.rs"), code);
+        assert!(result.is_some());
+        let (entities, relations) = result.unwrap();
+        assert_eq!(entities.len(), 4);
+        assert_eq!(relations.len(), 4);
+        assert!(entities.iter().any(|e| e.name == "ServiceConfig" && e.kind == EntityKind::Struct));
+        assert!(entities.iter().any(|e| e.name == "LogLevel" && e.kind == EntityKind::Enum));
+        assert!(entities.iter().any(|e| e.name == "Runner" && e.kind == EntityKind::Trait));
+        assert!(entities.iter().any(|e| e.name == "start_server" && e.kind == EntityKind::Function));
+    }
+
+    #[test]
+    fn test_parse_python_file() {
+        let code = r#"
+def compute_sum(a, b):
+    return a + b
+
+class MathEngine:
+    pass
+"#;
+        let result = parse_file(Path::new("scripts/engine.py"), code);
+        assert!(result.is_some());
+        let (entities, relations) = result.unwrap();
+        assert_eq!(entities.len(), 2);
+        assert_eq!(relations.len(), 2);
+        assert!(entities.iter().any(|e| e.name == "compute_sum" && e.kind == EntityKind::Function));
+        assert!(entities.iter().any(|e| e.name == "MathEngine" && e.kind == EntityKind::Struct));
+    }
+
+    #[test]
+    fn test_parse_typescript_file() {
+        let code = r#"
+export interface UserProfile {
+    id: string;
+}
+
+export type StringOrNumber = string | number;
+
+export class AuthService {
+}
+
+export function fetchUser() {
+    return null;
+}
+"#;
+        let result = parse_file(Path::new("web/user.ts"), code);
+        assert!(result.is_some());
+        let (entities, _) = result.unwrap();
+        assert!(entities.iter().any(|e| e.name == "UserProfile" && e.kind == EntityKind::Trait));
+        assert!(entities.iter().any(|e| e.name == "StringOrNumber" && e.kind == EntityKind::Struct));
+        assert!(entities.iter().any(|e| e.name == "AuthService" && e.kind == EntityKind::Struct));
+        assert!(entities.iter().any(|e| e.name == "fetchUser" && e.kind == EntityKind::Function));
+    }
+
+    #[test]
+    fn test_parse_go_file() {
+        let code = r#"
+package main
+
+type Config struct {
+    Host string
+}
+
+func Connect() error {
+    return nil
+}
+"#;
+        let result = parse_file(Path::new("server.go"), code);
+        assert!(result.is_some());
+        let (entities, _) = result.unwrap();
+        assert!(entities.iter().any(|e| e.name == "Config" && e.kind == EntityKind::Struct));
+        assert!(entities.iter().any(|e| e.name == "Connect" && e.kind == EntityKind::Function));
+    }
+
+    #[test]
+    fn test_parse_javascript_file() {
+        let code = r#"
+class Controller {
+}
+
+function init() {
+}
+"#;
+        let result = parse_file(Path::new("app.js"), code);
+        assert!(result.is_some());
+        let (entities, _) = result.unwrap();
+        assert!(entities.iter().any(|e| e.name == "Controller" && e.kind == EntityKind::Struct));
+        assert!(entities.iter().any(|e| e.name == "init" && e.kind == EntityKind::Function));
+    }
+
+    #[test]
+    fn test_parse_unsupported_file() {
+        let result = parse_file(Path::new("notes.txt"), "hello world");
+        assert!(result.is_none());
+    }
+}
+
 

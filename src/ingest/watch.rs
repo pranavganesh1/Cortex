@@ -65,7 +65,7 @@ pub async fn start_watcher(path: PathBuf, pool: SqlitePool) -> Result<()> {
     Ok(())
 }
 
-fn should_ignore(path: &Path) -> bool {
+pub(crate) fn should_ignore(path: &Path) -> bool {
     path.components().any(|c| {
         let name = c.as_os_str().to_string_lossy();
         name == ".git"
@@ -77,7 +77,7 @@ fn should_ignore(path: &Path) -> bool {
     })
 }
 
-fn is_code_file(path: &Path) -> bool {
+pub(crate) fn is_code_file(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|e| e.to_str()),
         Some("rs") | Some("py") | Some("js") | Some("ts") | Some("jsx") | Some("tsx")
@@ -147,9 +147,55 @@ async fn process_file(path: &Path, root: &Path, pool: &SqlitePool) -> Result<()>
     Ok(())
 }
 
-fn is_parseable(path: &Path) -> bool {
+pub(crate) fn is_parseable(path: &Path) -> bool {
     matches!(
         path.extension().and_then(|e| e.to_str()),
         Some("rs") | Some("py") | Some("js") | Some("ts") | Some("jsx") | Some("tsx") | Some("go")
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_should_ignore() {
+        assert!(should_ignore(Path::new(".git/HEAD")));
+        assert!(should_ignore(Path::new("target/debug/app.exe")));
+        assert!(should_ignore(Path::new("node_modules/pkg/index.js")));
+        assert!(should_ignore(Path::new(".cortex/cortex.db")));
+        assert!(should_ignore(Path::new("dist/bundle.js")));
+        assert!(should_ignore(Path::new("build/output.o")));
+        assert!(!should_ignore(Path::new("src/main.rs")));
+        assert!(!should_ignore(Path::new("docs/architecture.md")));
+    }
+
+    #[test]
+    fn test_is_code_file() {
+        assert!(is_code_file(Path::new("src/main.rs")));
+        assert!(is_code_file(Path::new("scripts/test.py")));
+        assert!(is_code_file(Path::new("frontend/index.ts")));
+        assert!(is_code_file(Path::new("frontend/app.jsx")));
+        assert!(is_code_file(Path::new("backend/main.go")));
+        assert!(is_code_file(Path::new("Cargo.toml")));
+        assert!(is_code_file(Path::new("package.json")));
+        assert!(is_code_file(Path::new("README.md")));
+        assert!(!is_code_file(Path::new("image.png")));
+        assert!(!is_code_file(Path::new("binary.wasm")));
+    }
+
+    #[test]
+    fn test_is_parseable() {
+        assert!(is_parseable(Path::new("src/lib.rs")));
+        assert!(is_parseable(Path::new("app.py")));
+        assert!(is_parseable(Path::new("index.js")));
+        assert!(is_parseable(Path::new("index.ts")));
+        assert!(is_parseable(Path::new("component.jsx")));
+        assert!(is_parseable(Path::new("component.tsx")));
+        assert!(is_parseable(Path::new("main.go")));
+        assert!(!is_parseable(Path::new("config.toml")));
+        assert!(!is_parseable(Path::new("notes.md")));
+        assert!(!is_parseable(Path::new("data.json")));
+    }
+}
+

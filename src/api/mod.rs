@@ -1,5 +1,7 @@
+//! HTTP API server exposing endpoints for code context, entities, and server health.
 pub mod routes;
 pub mod context;
+
 
 use axum::{Router, routing::get, http::Method};
 use sqlx::SqlitePool;

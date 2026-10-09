@@ -1,14 +1,14 @@
 use axum::{extract::{Query, State}, response::Json};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ContextParams {
     file_path: String,
     query: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct ActiveContextParams {
     query: Option<String>,
 }
@@ -70,7 +70,7 @@ pub async fn focus(State(_state): State<super::AppState>) -> Result<String, Stri
     Ok(output)
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct ListParams {
     limit: Option<usize>,
     kind: Option<String>,
@@ -122,3 +122,46 @@ pub async fn relations(
 
     Ok(Json(json!({ "relations": items })))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_health_endpoint() {
+        let Json(val) = health().await;
+        assert_eq!(val["status"], "ok");
+    }
+
+    #[test]
+    fn test_deserialize_context_params() {
+        let json_str = r#"{"file_path":"src/main.rs","query":"explain"}"#;
+        let params: ContextParams = serde_json::from_str(json_str).unwrap();
+        assert_eq!(params.file_path, "src/main.rs");
+        assert_eq!(params.query, "explain");
+    }
+
+    #[test]
+    fn test_deserialize_active_context_params() {
+        let json_with_query = r#"{"query":"how does this work?"}"#;
+        let params: ActiveContextParams = serde_json::from_str(json_with_query).unwrap();
+        assert_eq!(params.query.as_deref(), Some("how does this work?"));
+
+        let empty_json = r#"{}"#;
+        let empty_params: ActiveContextParams = serde_json::from_str(empty_json).unwrap();
+        assert_eq!(empty_params.query, None);
+    }
+
+    #[test]
+    fn test_deserialize_list_params() {
+        let json_str = r#"{"limit": 50, "kind": "Commit"}"#;
+        let params: ListParams = serde_json::from_str(json_str).unwrap();
+        assert_eq!(params.limit, Some(50));
+        assert_eq!(params.kind.as_deref(), Some("Commit"));
+
+        let empty: ListParams = serde_json::from_str("{}").unwrap();
+        assert_eq!(empty.limit, None);
+        assert_eq!(empty.kind, None);
+    }
+}
+

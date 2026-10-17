@@ -67,15 +67,26 @@ pub async fn ingest_repo(path: &str, pool: &SqlitePool) -> Result<(Vec<Entity>, 
         // Push to working memory
         crate::memory::stack::add_commit(&oid.to_string());
 
-        // Files in this commit
+        // Files modified in this commit (diff against parent, or empty tree if initial commit)
         let tree = commit.tree()?;
-        for entry in tree.iter() {
-            if let Some(name) = entry.name() {
-                let file_id = format!("file:{}:{}", oid, name);
+        let parent_tree = if commit.parent_count() > 0 {
+            Some(commit.parent(0)?.tree()?)
+        } else {
+            None
+        };
+
+        let diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)?;
+        for delta in diff.deltas() {
+            let path_opt = delta.new_file().path().or_else(|| delta.old_file().path());
+            if let Some(path) = path_opt {
+                let path_str = path.to_string_lossy().replace('\\', "/");
+                let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or(&path_str).to_string();
+                let file_id = format!("file:{}:{}", oid, path_str);
+
                 entities.push(Entity {
                     id: file_id.clone(),
                     kind: EntityKind::File,
-                    name: name.to_string(),
+                    name: file_name,
                     content: None,
                     created_at: time,
                     updated_at: time,
@@ -96,4 +107,63 @@ pub async fn ingest_repo(path: &str, pool: &SqlitePool) -> Result<(Vec<Entity>, 
 
     Ok((entities, relations))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use git2::{Signature, Time};
+
+    #[tokio::test]
+    async fn test_ingest_repo_extracts_commits_and_modified_files() {
+        let temp_dir = std::env::temp_dir().join(format!("cortex_git_test_{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let repo = Repository::init(&temp_dir).unwrap();
+        let sig = Signature::new("Test User", "test@example.com", &Time::new(1700000000, 0)).unwrap();
+
+        // Create a file in a subdirectory
+        let sub_dir = temp_dir.join("src");
+        std::fs::create_dir_all(&sub_dir).unwrap();
+        let file_path = sub_dir.join("lib.rs");
+        {
+            let mut f = File::create(&file_path).unwrap();
+            writeln!(f, "// DECISION: choose sqlite for persistence").unwrap();
+        }
+
+        // Add and commit
+        let mut index = repo.index().unwrap();
+        index.add_path(std::path::Path::new("src/lib.rs")).unwrap();
+        index.write().unwrap();
+        let tree_id = index.write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+
+        let commit_oid = repo.commit(
+            Some("HEAD"),
+            &sig,
+            &sig,
+            "Initial commit: setup sqlite database",
+            &tree,
+            &[],
+        ).unwrap();
+
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::db::schema::init_db(&pool).await.unwrap();
+
+        let (entities, relations) = ingest_repo(temp_dir.to_str().unwrap(), &pool).await.unwrap();
+
+        assert!(entities.iter().any(|e| e.kind == EntityKind::Commit && e.id.contains(&commit_oid.to_string())));
+        assert!(entities.iter().any(|e| e.kind == EntityKind::File && e.name == "lib.rs"));
+        assert!(relations.iter().any(|r| r.kind == RelationKind::Authored));
+        assert!(relations.iter().any(|r| r.kind == RelationKind::Modified));
+
+        // Clean up
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+}
+
 

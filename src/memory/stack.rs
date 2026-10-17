@@ -113,6 +113,27 @@ impl WorkingMemory {
         self.all_contexts().into_iter().rev().take(n).collect()
     }
 
+    pub fn peek(&self) -> Option<&ContextFrame> {
+        self.stack.last()
+    }
+
+    pub fn peek_n(&self, n: usize) -> Option<&ContextFrame> {
+        if n < self.stack.len() {
+            self.stack.get(self.stack.len() - 1 - n)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.stack.is_empty()
+    }
+
+    pub fn clear(&mut self) {
+        self.stack.clear();
+        self.current = ContextFrame::new(format!("ctx-{}", Uuid::new_v4()));
+    }
+
     pub fn set_max_stack_depth(&mut self, depth: usize) {
         self.max_stack_depth = depth;
         while self.stack.len() > self.max_stack_depth && !self.stack.is_empty() {
@@ -178,6 +199,23 @@ where
     WORKING_MEMORY.lock().ok().map(|wm| f(&*wm))
 }
 
+pub fn peek<F, R>(f: F) -> Option<R>
+where
+    F: FnOnce(&ContextFrame) -> R,
+{
+    WORKING_MEMORY.lock().ok()?.peek().map(f)
+}
+
+pub fn clear() {
+    if let Ok(mut wm) = WORKING_MEMORY.lock() {
+        wm.clear();
+    }
+}
+
+pub fn is_empty() -> bool {
+    WORKING_MEMORY.lock().map(|wm| wm.is_empty()).unwrap_or(true)
+}
+
 pub fn back() -> Option<ContextFrame> {
     WORKING_MEMORY.lock().ok()?.back()
 }
@@ -214,5 +252,43 @@ mod tests {
 
         assert_eq!(wm.stack().len(), 2);
         assert_eq!(wm.context_count(), 3);
+    }
+
+    #[test]
+    fn test_working_memory_peek_and_clear() {
+        let mut wm = WorkingMemory::new();
+        assert!(wm.is_empty());
+        assert!(wm.peek().is_none());
+
+        wm.touch_file("src/api.rs");
+        wm.push_current();
+
+        assert!(!wm.is_empty());
+        assert_eq!(wm.stack().len(), 1);
+        assert!(wm.peek().is_some());
+        assert_eq!(wm.peek_n(0).unwrap().id, wm.peek().unwrap().id);
+        assert!(wm.peek_n(1).is_none());
+
+        wm.clear();
+        assert!(wm.is_empty());
+        assert_eq!(wm.stack().len(), 0);
+        assert_eq!(wm.context_count(), 1);
+    }
+
+    #[test]
+    fn test_working_memory_find_context_by_topic() {
+        let mut wm = WorkingMemory::new();
+        wm.touch_file("src/api/routes.rs");
+        wm.touch_file("src/api/context.rs");
+        wm.push_current();
+
+        wm.touch_file("src/db/schema.rs");
+
+        let found = wm.find_context_by_topic("api");
+        assert!(found.is_some());
+        assert!(found.unwrap().topic.contains("api"));
+
+        let not_found = wm.find_context_by_topic("nonexistent");
+        assert!(not_found.is_none());
     }
 }

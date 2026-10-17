@@ -28,6 +28,7 @@ pub async fn start_server(pool: SqlitePool) -> anyhow::Result<()> {
         .route("/focus", get(routes::focus))
         .route("/entities", get(routes::entities))
         .route("/relations", get(routes::relations))
+        .route("/stack", get(routes::stack))
         .layer(cors)
         .with_state(state);
     

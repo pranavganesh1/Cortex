@@ -70,6 +70,27 @@ pub async fn focus(State(_state): State<super::AppState>) -> Result<String, Stri
     Ok(output)
 }
 
+pub async fn stack(State(_state): State<super::AppState>) -> Result<Json<serde_json::Value>, String> {
+    let contexts = crate::memory::stack::with_stack(|wm| {
+        wm.all_contexts().into_iter().map(|c| {
+            json!({
+                "id": c.id,
+                "topic": c.topic,
+                "files": c.files,
+                "decisions": c.decisions,
+                "queries": c.queries,
+                "commits": c.commits,
+                "duration_minutes": c.duration_minutes(),
+                "is_active": c.is_active
+            })
+        }).collect::<Vec<_>>()
+    }).unwrap_or_default();
+
+    Ok(Json(json!({
+        "contexts": contexts
+    })))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct ListParams {
     limit: Option<usize>,
@@ -163,5 +184,21 @@ mod tests {
         assert_eq!(empty.limit, None);
         assert_eq!(empty.kind, None);
     }
+
+    #[tokio::test]
+    async fn test_stack_endpoint() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::db::schema::init_db(&pool).await.unwrap();
+        let state = crate::api::AppState { pool };
+
+        let result = stack(State(state)).await;
+        assert!(result.is_ok());
+        let Json(val) = result.unwrap();
+        assert!(val.get("contexts").is_some());
+    }
 }
+
 

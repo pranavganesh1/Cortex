@@ -13,7 +13,7 @@ pub struct Entity {
     pub parent_id: Option<String>, // which file/commit owns this entity
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EntityKind {
     Commit,
     File,
@@ -26,6 +26,38 @@ pub enum EntityKind {
     Module,
     Decision,
     Note,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseEntityKindError(pub String);
+
+impl std::fmt::Display for ParseEntityKindError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown entity kind: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParseEntityKindError {}
+
+impl std::str::FromStr for EntityKind {
+    type Err = ParseEntityKindError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "commit" => Ok(EntityKind::Commit),
+            "file" => Ok(EntityKind::File),
+            "function" | "func" => Ok(EntityKind::Function),
+            "struct" => Ok(EntityKind::Struct),
+            "class" => Ok(EntityKind::Class),
+            "enum" => Ok(EntityKind::Enum),
+            "trait" => Ok(EntityKind::Trait),
+            "interface" => Ok(EntityKind::Interface),
+            "module" => Ok(EntityKind::Module),
+            "decision" => Ok(EntityKind::Decision),
+            "note" => Ok(EntityKind::Note),
+            _ => Err(ParseEntityKindError(s.to_string())),
+        }
+    }
 }
 
 impl std::fmt::Display for EntityKind {
@@ -74,13 +106,39 @@ pub struct Relation {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum RelationKind {
     Authored,
     Modified,
     Contains,
     DependsOn,
     DecidedIn,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseRelationKindError(pub String);
+
+impl std::fmt::Display for ParseRelationKindError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown relation kind: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParseRelationKindError {}
+
+impl std::str::FromStr for RelationKind {
+    type Err = ParseRelationKindError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "authored" => Ok(RelationKind::Authored),
+            "modified" => Ok(RelationKind::Modified),
+            "contains" => Ok(RelationKind::Contains),
+            "dependson" | "depends_on" | "depends on" => Ok(RelationKind::DependsOn),
+            "decidedin" | "decided_in" | "decided in" => Ok(RelationKind::DecidedIn),
+            _ => Err(ParseRelationKindError(s.to_string())),
+        }
+    }
 }
 
 impl std::fmt::Display for RelationKind {
@@ -135,11 +193,40 @@ mod tests {
     }
 
     #[test]
+    fn test_entity_kind_from_str() {
+        assert_eq!("function".parse::<EntityKind>().unwrap(), EntityKind::Function);
+        assert_eq!("func".parse::<EntityKind>().unwrap(), EntityKind::Function);
+        assert_eq!("Struct".parse::<EntityKind>().unwrap(), EntityKind::Struct);
+        assert_eq!("CLASS".parse::<EntityKind>().unwrap(), EntityKind::Class);
+        assert_eq!("Enum".parse::<EntityKind>().unwrap(), EntityKind::Enum);
+        assert_eq!("Trait".parse::<EntityKind>().unwrap(), EntityKind::Trait);
+        assert_eq!("Interface".parse::<EntityKind>().unwrap(), EntityKind::Interface);
+        assert_eq!("File".parse::<EntityKind>().unwrap(), EntityKind::File);
+        assert_eq!("Commit".parse::<EntityKind>().unwrap(), EntityKind::Commit);
+        assert_eq!("Module".parse::<EntityKind>().unwrap(), EntityKind::Module);
+        assert_eq!("Decision".parse::<EntityKind>().unwrap(), EntityKind::Decision);
+        assert_eq!("Note".parse::<EntityKind>().unwrap(), EntityKind::Note);
+        assert!("invalid_kind".parse::<EntityKind>().is_err());
+    }
+
+    #[test]
     fn test_relation_kind_display() {
         assert_eq!(RelationKind::Authored.to_string(), "Authored");
         assert_eq!(RelationKind::Modified.to_string(), "Modified");
         assert_eq!(RelationKind::Contains.to_string(), "Contains");
         assert_eq!(RelationKind::DependsOn.to_string(), "DependsOn");
         assert_eq!(RelationKind::DecidedIn.to_string(), "DecidedIn");
+    }
+
+    #[test]
+    fn test_relation_kind_from_str() {
+        assert_eq!("authored".parse::<RelationKind>().unwrap(), RelationKind::Authored);
+        assert_eq!("modified".parse::<RelationKind>().unwrap(), RelationKind::Modified);
+        assert_eq!("contains".parse::<RelationKind>().unwrap(), RelationKind::Contains);
+        assert_eq!("dependson".parse::<RelationKind>().unwrap(), RelationKind::DependsOn);
+        assert_eq!("depends_on".parse::<RelationKind>().unwrap(), RelationKind::DependsOn);
+        assert_eq!("decidedin".parse::<RelationKind>().unwrap(), RelationKind::DecidedIn);
+        assert_eq!("decided_in".parse::<RelationKind>().unwrap(), RelationKind::DecidedIn);
+        assert!("invalid_rel".parse::<RelationKind>().is_err());
     }
 }

@@ -37,7 +37,12 @@ async fn execute_list(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRes
     // Name pattern (user-derived — must be parameterized)
     if let Some(pattern) = &query.name_pattern {
         sql.push_str(" AND name LIKE ?");
-        binds.push(format!("%{}%", pattern));
+        let bind_pattern = if pattern.contains('%') {
+            pattern.clone()
+        } else {
+            format!("%{}%", pattern)
+        };
+        binds.push(bind_pattern);
         desc.push_str(&format!(" matching '{}'", pattern));
     }
 
@@ -133,7 +138,12 @@ async fn execute_count(pool: &SqlitePool, query: &ParsedQuery) -> Result<QueryRe
     }
     if let Some(pattern) = &query.name_pattern {
         sql.push_str(" AND name LIKE ?");
-        binds.push(format!("%{}%", pattern));
+        let bind_pattern = if pattern.contains('%') {
+            pattern.clone()
+        } else {
+            format!("%{}%", pattern)
+        };
+        binds.push(bind_pattern);
     }
     if let Some(content) = &query.content_pattern {
         sql.push_str(" AND (name LIKE ? OR content LIKE ?)");
@@ -224,29 +234,9 @@ struct RelationRow {
 }
 
 fn parse_kind(s: &str) -> EntityKind {
-    match s {
-        "Commit" => EntityKind::Commit,
-        "File" => EntityKind::File,
-        "Function" => EntityKind::Function,
-        "Struct" => EntityKind::Struct,
-        "Class" => EntityKind::Class,
-        "Enum" => EntityKind::Enum,
-        "Trait" => EntityKind::Trait,
-        "Interface" => EntityKind::Interface,
-        "Module" => EntityKind::Module,
-        "Decision" => EntityKind::Decision,
-        "Note" => EntityKind::Note,
-        _ => EntityKind::Note,
-    }
+    s.parse().unwrap_or(EntityKind::Note)
 }
 
 fn parse_relation_kind(s: &str) -> crate::core::models::RelationKind {
-    match s {
-        "Authored" => crate::core::models::RelationKind::Authored,
-        "Modified" => crate::core::models::RelationKind::Modified,
-        "Contains" => crate::core::models::RelationKind::Contains,
-        "DependsOn" => crate::core::models::RelationKind::DependsOn,
-        "DecidedIn" => crate::core::models::RelationKind::DecidedIn,
-        _ => crate::core::models::RelationKind::Contains,
-    }
+    s.parse().unwrap_or(crate::core::models::RelationKind::Contains)
 }

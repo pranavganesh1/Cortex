@@ -2,7 +2,7 @@ use chrono::{DateTime, Duration, Utc};
 use sqlx::SqlitePool;
 use anyhow::Result;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DebtKind {
     AbandonedSession,
     UnresolvedQuery,
@@ -23,12 +23,37 @@ impl std::fmt::Display for DebtKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
     Low,
     Medium,
     High,
     Critical,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseSeverityError(pub String);
+
+impl std::fmt::Display for ParseSeverityError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown severity level: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParseSeverityError {}
+
+impl std::str::FromStr for Severity {
+    type Err = ParseSeverityError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "low" => Ok(Severity::Low),
+            "medium" | "med" => Ok(Severity::Medium),
+            "high" => Ok(Severity::High),
+            "critical" | "crit" => Ok(Severity::Critical),
+            _ => Err(ParseSeverityError(s.to_string())),
+        }
+    }
 }
 
 impl std::fmt::Display for Severity {
@@ -43,6 +68,15 @@ impl std::fmt::Display for Severity {
 }
 
 impl Severity {
+    pub fn rank(&self) -> u8 {
+        match self {
+            Severity::Low => 1,
+            Severity::Medium => 2,
+            Severity::High => 3,
+            Severity::Critical => 4,
+        }
+    }
+
     /// Returns the emoji indicator for this severity level
     pub fn emoji(&self) -> &'static str {
         match self {
@@ -54,7 +88,19 @@ impl Severity {
     }
 }
 
-#[derive(Debug, Clone)]
+impl PartialOrd for Severity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Severity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.rank().cmp(&other.rank())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DebtItem {
     pub kind: DebtKind,
     pub title: String,
@@ -62,6 +108,13 @@ pub struct DebtItem {
     pub severity: Severity,
     pub timestamp: DateTime<Utc>,
     pub entity_id: Option<String>,
+}
+
+pub fn filter_debt_by_min_severity(debts: &[DebtItem], min_severity: Severity) -> Vec<DebtItem> {
+    debts.iter()
+        .filter(|d| d.severity >= min_severity)
+        .cloned()
+        .collect()
 }
 
 pub async fn detect_debt(pool: &SqlitePool) -> Result<Vec<DebtItem>> {
@@ -74,17 +127,8 @@ pub async fn detect_debt(pool: &SqlitePool) -> Result<Vec<DebtItem>> {
     
     // Sort: Critical first, then by recency
     debts.sort_by(|a, b| {
-        let sev = |s: &Severity| match s {
-            Severity::Critical => 0,
-            Severity::High => 1,
-            Severity::Medium => 2,
-            Severity::Low => 3,
-        };
-        let sev_cmp = sev(&a.severity).cmp(&sev(&b.severity));
-        if sev_cmp != std::cmp::Ordering::Equal {
-            return sev_cmp;
-        }
-        b.timestamp.cmp(&a.timestamp)
+        b.severity.cmp(&a.severity)
+            .then_with(|| b.timestamp.cmp(&a.timestamp))
     });
     
     Ok(debts)
@@ -329,4 +373,64 @@ mod tests {
         assert_eq!(Severity::Low.to_string(), "Low");
         assert_eq!(Severity::Low.emoji(), "🟢");
     }
+
+    #[test]
+    fn test_severity_ordering() {
+        assert!(Severity::Critical > Severity::High);
+        assert!(Severity::High > Severity::Medium);
+        assert!(Severity::Medium > Severity::Low);
+        assert_eq!(Severity::Critical.rank(), 4);
+        assert_eq!(Severity::Low.rank(), 1);
+    }
+
+    #[test]
+    fn test_severity_from_str() {
+        assert_eq!("critical".parse::<Severity>().unwrap(), Severity::Critical);
+        assert_eq!("crit".parse::<Severity>().unwrap(), Severity::Critical);
+        assert_eq!("high".parse::<Severity>().unwrap(), Severity::High);
+        assert_eq!("medium".parse::<Severity>().unwrap(), Severity::Medium);
+        assert_eq!("med".parse::<Severity>().unwrap(), Severity::Medium);
+        assert_eq!("low".parse::<Severity>().unwrap(), Severity::Low);
+        assert!("invalid".parse::<Severity>().is_err());
+    }
+
+    #[test]
+    fn test_filter_debt_by_min_severity() {
+        let now = Utc::now();
+        let items = vec![
+            DebtItem {
+                kind: DebtKind::AbandonedSession,
+                title: "Low item".to_string(),
+                description: "".to_string(),
+                severity: Severity::Low,
+                timestamp: now,
+                entity_id: None,
+            },
+            DebtItem {
+                kind: DebtKind::OpenRefactor,
+                title: "High item".to_string(),
+                description: "".to_string(),
+                severity: Severity::High,
+                timestamp: now,
+                entity_id: None,
+            },
+            DebtItem {
+                kind: DebtKind::StaleDecision,
+                title: "Critical item".to_string(),
+                description: "".to_string(),
+                severity: Severity::Critical,
+                timestamp: now,
+                entity_id: None,
+            },
+        ];
+
+        let high_and_above = filter_debt_by_min_severity(&items, Severity::High);
+        assert_eq!(high_and_above.len(), 2);
+        assert!(high_and_above.iter().all(|d| d.severity >= Severity::High));
+
+        let critical_only = filter_debt_by_min_severity(&items, Severity::Critical);
+        assert_eq!(critical_only.len(), 1);
+        assert_eq!(critical_only[0].severity, Severity::Critical);
+    }
 }
+

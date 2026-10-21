@@ -144,6 +144,60 @@ pub async fn relations(
     Ok(Json(json!({ "relations": items })))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
+pub struct DebtQueryParams {
+    pub min_severity: Option<String>,
+    pub kind: Option<String>,
+}
+
+pub async fn debt(
+    State(state): State<super::AppState>,
+    Query(params): Query<DebtQueryParams>,
+) -> Result<Json<serde_json::Value>, String> {
+    let mut debts = crate::debt::detector::detect_debt(&state.pool)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if let Some(sev_str) = params.min_severity {
+        let min_sev = sev_str.parse::<crate::debt::detector::Severity>()
+            .map_err(|e| e.to_string())?;
+        debts = crate::debt::detector::filter_debt_by_min_severity(&debts, min_sev);
+    }
+
+    if let Some(kind_str) = params.kind {
+        let kind = kind_str.parse::<crate::debt::detector::DebtKind>()
+            .map_err(|e| e.to_string())?;
+        debts = crate::debt::detector::filter_debt_by_kind(&debts, &kind);
+    }
+
+    let critical = debts.iter().filter(|d| d.severity == crate::debt::detector::Severity::Critical).count();
+    let high = debts.iter().filter(|d| d.severity == crate::debt::detector::Severity::High).count();
+    let medium = debts.iter().filter(|d| d.severity == crate::debt::detector::Severity::Medium).count();
+    let low = debts.iter().filter(|d| d.severity == crate::debt::detector::Severity::Low).count();
+
+    let items: Vec<serde_json::Value> = debts.into_iter().map(|d| {
+        json!({
+            "kind": d.kind.to_string(),
+            "title": d.title,
+            "description": d.description,
+            "severity": d.severity.to_string(),
+            "timestamp": d.timestamp.to_rfc3339(),
+            "entity_id": d.entity_id,
+        })
+    }).collect();
+
+    Ok(Json(json!({
+        "summary": {
+            "total": items.len(),
+            "critical": critical,
+            "high": high,
+            "medium": medium,
+            "low": low,
+        },
+        "debts": items
+    })))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -185,6 +239,14 @@ mod tests {
         assert_eq!(empty.kind, None);
     }
 
+    #[test]
+    fn test_deserialize_debt_query_params() {
+        let json_str = r#"{"min_severity":"high","kind":"abandoned_session"}"#;
+        let params: DebtQueryParams = serde_json::from_str(json_str).unwrap();
+        assert_eq!(params.min_severity.as_deref(), Some("high"));
+        assert_eq!(params.kind.as_deref(), Some("abandoned_session"));
+    }
+
     #[tokio::test]
     async fn test_stack_endpoint() {
         let pool = sqlx::sqlite::SqlitePoolOptions::new()
@@ -198,6 +260,22 @@ mod tests {
         assert!(result.is_ok());
         let Json(val) = result.unwrap();
         assert!(val.get("contexts").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_debt_endpoint() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        crate::db::schema::init_db(&pool).await.unwrap();
+        let state = crate::api::AppState { pool };
+
+        let result = debt(State(state), Query(DebtQueryParams::default())).await;
+        assert!(result.is_ok());
+        let Json(val) = result.unwrap();
+        assert!(val.get("debts").is_some());
+        assert!(val.get("summary").is_some());
     }
 }
 

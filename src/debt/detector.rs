@@ -1,14 +1,42 @@
 use chrono::{DateTime, Duration, Utc};
 use sqlx::SqlitePool;
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DebtKind {
     AbandonedSession,
     UnresolvedQuery,
     StaleDecision,
     OpenRefactor,
     TodoWithoutAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseDebtKindError(pub String);
+
+impl std::fmt::Display for ParseDebtKindError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unknown debt kind: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParseDebtKindError {}
+
+impl std::str::FromStr for DebtKind {
+    type Err = ParseDebtKindError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let normalized = s.trim().to_ascii_lowercase().replace(['-', ' '], "_");
+        match normalized.as_str() {
+            "abandoned_session" | "abandoned" => Ok(DebtKind::AbandonedSession),
+            "unresolved_query" | "unresolved" | "query" => Ok(DebtKind::UnresolvedQuery),
+            "stale_decision" | "stale" | "decision" => Ok(DebtKind::StaleDecision),
+            "open_refactor" | "refactor" => Ok(DebtKind::OpenRefactor),
+            "todo_without_action" | "todo" => Ok(DebtKind::TodoWithoutAction),
+            _ => Err(ParseDebtKindError(s.to_string())),
+        }
+    }
 }
 
 impl std::fmt::Display for DebtKind {
@@ -23,7 +51,7 @@ impl std::fmt::Display for DebtKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Severity {
     Low,
     Medium,
@@ -100,7 +128,7 @@ impl Ord for Severity {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DebtItem {
     pub kind: DebtKind,
     pub title: String,
@@ -113,6 +141,13 @@ pub struct DebtItem {
 pub fn filter_debt_by_min_severity(debts: &[DebtItem], min_severity: Severity) -> Vec<DebtItem> {
     debts.iter()
         .filter(|d| d.severity >= min_severity)
+        .cloned()
+        .collect()
+}
+
+pub fn filter_debt_by_kind(debts: &[DebtItem], kind: &DebtKind) -> Vec<DebtItem> {
+    debts.iter()
+        .filter(|d| d.kind == *kind)
         .cloned()
         .collect()
 }
@@ -431,6 +466,66 @@ mod tests {
         let critical_only = filter_debt_by_min_severity(&items, Severity::Critical);
         assert_eq!(critical_only.len(), 1);
         assert_eq!(critical_only[0].severity, Severity::Critical);
+    }
+
+    #[test]
+    fn test_debt_kind_from_str() {
+        assert_eq!("abandoned_session".parse::<DebtKind>().unwrap(), DebtKind::AbandonedSession);
+        assert_eq!("abandoned".parse::<DebtKind>().unwrap(), DebtKind::AbandonedSession);
+        assert_eq!("unresolved_query".parse::<DebtKind>().unwrap(), DebtKind::UnresolvedQuery);
+        assert_eq!("unresolved".parse::<DebtKind>().unwrap(), DebtKind::UnresolvedQuery);
+        assert_eq!("stale_decision".parse::<DebtKind>().unwrap(), DebtKind::StaleDecision);
+        assert_eq!("open_refactor".parse::<DebtKind>().unwrap(), DebtKind::OpenRefactor);
+        assert_eq!("todo_without_action".parse::<DebtKind>().unwrap(), DebtKind::TodoWithoutAction);
+        assert_eq!("todo".parse::<DebtKind>().unwrap(), DebtKind::TodoWithoutAction);
+        assert!("unknown_kind".parse::<DebtKind>().is_err());
+    }
+
+    #[test]
+    fn test_filter_debt_by_kind() {
+        let now = Utc::now();
+        let items = vec![
+            DebtItem {
+                kind: DebtKind::AbandonedSession,
+                title: "Abandoned".to_string(),
+                description: "".to_string(),
+                severity: Severity::Low,
+                timestamp: now,
+                entity_id: None,
+            },
+            DebtItem {
+                kind: DebtKind::StaleDecision,
+                title: "Stale".to_string(),
+                description: "".to_string(),
+                severity: Severity::High,
+                timestamp: now,
+                entity_id: None,
+            },
+        ];
+
+        let filtered = filter_debt_by_kind(&items, &DebtKind::AbandonedSession);
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].title, "Abandoned");
+
+        let none_found = filter_debt_by_kind(&items, &DebtKind::OpenRefactor);
+        assert!(none_found.is_empty());
+    }
+
+    #[test]
+    fn test_debt_item_serde() {
+        let now = Utc::now();
+        let item = DebtItem {
+            kind: DebtKind::OpenRefactor,
+            title: "WIP".to_string(),
+            description: "Desc".to_string(),
+            severity: Severity::Critical,
+            timestamp: now,
+            entity_id: Some("ent-123".to_string()),
+        };
+
+        let serialized = serde_json::to_string(&item).unwrap();
+        let deserialized: DebtItem = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, item);
     }
 }
 

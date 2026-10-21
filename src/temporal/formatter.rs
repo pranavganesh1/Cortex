@@ -141,6 +141,49 @@ pub fn format_mental_state(state: &MentalState) -> String {
     output
 }
 
+pub fn format_timeline_json(sessions: &[WorkSession]) -> String {
+    let json_sessions: Vec<serde_json::Value> = sessions
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "start": s.start.to_rfc3339(),
+                "end": s.end.to_rfc3339(),
+                "duration_minutes": s.duration_minutes,
+                "active_file": s.active_file,
+                "files_touched": s.files_touched,
+                "commits": s.commits,
+                "queries": s.queries,
+                "decisions": s.decisions,
+            })
+        })
+        .collect();
+
+    serde_json::to_string_pretty(&serde_json::json!({
+        "total_sessions": sessions.len(),
+        "sessions": json_sessions
+    }))
+    .unwrap_or_else(|_| "{}".to_string())
+}
+
+pub fn format_mental_state_json(state: &MentalState) -> String {
+    serde_json::to_string_pretty(&serde_json::json!({
+        "timestamp": state.timestamp.to_rfc3339(),
+        "active_file": state.active_file,
+        "files_in_session": state.files_in_session,
+        "recent_commits": state.recent_commits,
+        "recent_decisions": state.recent_decisions,
+        "recent_queries": state.recent_queries,
+        "session": {
+            "start": state.session.start.to_rfc3339(),
+            "end": state.session.end.to_rfc3339(),
+            "duration_minutes": state.session.duration_minutes,
+            "files_touched": state.session.files_touched,
+            "active_file": state.session.active_file,
+        }
+    }))
+    .unwrap_or_else(|_| "{}".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,6 +221,27 @@ mod tests {
     }
 
     #[test]
+    fn test_format_timeline_json() {
+        let start = Utc.with_ymd_and_hms(2026, 7, 22, 14, 0, 0).unwrap();
+        let end = Utc.with_ymd_and_hms(2026, 7, 22, 15, 0, 0).unwrap();
+        let session = WorkSession {
+            start,
+            end,
+            duration_minutes: 60,
+            files_touched: vec!["src/main.rs".to_string()],
+            commits: vec!["init".to_string()],
+            queries: vec![],
+            decisions: vec![],
+            active_file: Some("src/main.rs".to_string()),
+        };
+
+        let json = format_timeline_json(&[session]);
+        assert!(json.contains("\"total_sessions\": 1"));
+        assert!(json.contains("\"src/main.rs\""));
+        assert!(json.contains("\"duration_minutes\": 60"));
+    }
+
+    #[test]
     fn test_format_mental_state() {
         let now = Utc.with_ymd_and_hms(2026, 7, 22, 15, 0, 0).unwrap();
         let session = WorkSession {
@@ -210,5 +274,34 @@ mod tests {
         assert!(output.contains("Decisions nearby:"));
         assert!(output.contains("Questions you asked:"));
         assert!(output.contains("You were working on 2 files, primarily src/lib.rs"));
+    }
+
+    #[test]
+    fn test_format_mental_state_json() {
+        let now = Utc.with_ymd_and_hms(2026, 7, 22, 15, 0, 0).unwrap();
+        let session = WorkSession {
+            start: now,
+            end: now,
+            duration_minutes: 30,
+            files_touched: vec!["src/api.rs".to_string()],
+            commits: vec![],
+            queries: vec![],
+            decisions: vec![],
+            active_file: Some("src/api.rs".to_string()),
+        };
+
+        let state = MentalState {
+            timestamp: now,
+            session,
+            active_file: Some("src/api.rs".to_string()),
+            recent_commits: vec![],
+            recent_decisions: vec![],
+            recent_queries: vec![],
+            files_in_session: vec!["src/api.rs".to_string()],
+        };
+
+        let json = format_mental_state_json(&state);
+        assert!(json.contains("\"active_file\": \"src/api.rs\""));
+        assert!(json.contains("\"duration_minutes\": 30"));
     }
 }

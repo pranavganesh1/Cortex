@@ -36,12 +36,29 @@ pub fn parse_time_expression(expr: &str) -> Option<TimeRange> {
             end: now.date_naive().and_hms_opt(23, 59, 59)?.and_local_timezone(Utc).single()?,
             is_point: false,
         }),
-        "last week" => return Some(TimeRange {
+        "this week" => {
+            let days_since_monday = now.weekday().num_days_from_monday();
+            let monday = (now - Duration::days(days_since_monday as i64)).date_naive();
+            return Some(TimeRange {
+                start: monday.and_hms_opt(0, 0, 0)?.and_local_timezone(Utc).single()?,
+                end: now,
+                is_point: false,
+            });
+        }
+        "this month" => {
+            let first_of_month = NaiveDate::from_ymd_opt(now.year(), now.month(), 1)?;
+            return Some(TimeRange {
+                start: first_of_month.and_hms_opt(0, 0, 0)?.and_local_timezone(Utc).single()?,
+                end: now,
+                is_point: false,
+            });
+        }
+        "last week" | "past week" => return Some(TimeRange {
             start: (now - Duration::days(7)).date_naive().and_hms_opt(0, 0, 0)?.and_local_timezone(Utc).single()?,
             end: now,
             is_point: false,
         }),
-        "last month" => return Some(TimeRange {
+        "last month" | "past month" => return Some(TimeRange {
             start: (now - Duration::days(30)).date_naive().and_hms_opt(0, 0, 0)?.and_local_timezone(Utc).single()?,
             end: now,
             is_point: false,
@@ -191,8 +208,27 @@ mod tests {
         assert!(parse_time_expression("today").is_some());
         assert!(parse_time_expression("yesterday").is_some());
         assert!(parse_time_expression("this morning").is_some());
+        assert!(parse_time_expression("this week").is_some());
+        assert!(parse_time_expression("this month").is_some());
+        assert!(parse_time_expression("past week").is_some());
+        assert!(parse_time_expression("past month").is_some());
         assert!(parse_time_expression("last week").is_some());
         assert!(parse_time_expression("last month").is_some());
+    }
+
+    #[test]
+    fn test_parse_this_week_and_this_month() {
+        let week = parse_time_expression("this week").unwrap();
+        assert!(!week.is_point);
+        assert!(week.start <= week.end);
+
+        let month = parse_time_expression("this month").unwrap();
+        assert!(!month.is_point);
+        assert!(month.start <= month.end);
+
+        let past_week = parse_time_expression("past week").unwrap();
+        assert!(!past_week.is_point);
+        assert!(past_week.start <= past_week.end);
     }
 
     #[test]

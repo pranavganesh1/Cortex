@@ -2,8 +2,9 @@ use super::TimeRange;
 use chrono::{DateTime, Duration, Utc};
 use sqlx::SqlitePool;
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkSession {
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
@@ -15,7 +16,7 @@ pub struct WorkSession {
     pub active_file: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MentalState {
     pub timestamp: DateTime<Utc>,
     pub session: WorkSession,

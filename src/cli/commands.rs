@@ -40,21 +40,38 @@ pub enum Commands {
     Timeline {
         #[arg(default_value = "today")]
         when: String,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
     /// Recall what you were doing at a specific time
     Recall {
         when: String,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
     },
     /// Show current focus / working memory
     Focus,
     /// Show working memory stack
-    Stack,
+    Stack {
+        /// Clear the working memory stack
+        #[arg(long)]
+        clear: bool,
+    },
     /// Pop back to previous context
     Back,
     /// "Where was I?" — show recent context switches
     Where,
     /// Show cognitive debt dashboard
-    Debt,
+    Debt {
+        /// Minimum severity level (low, medium, high, critical)
+        #[arg(short = 's', long)]
+        min_severity: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Show weekly cognitive report
     Weekly,
     /// Show stats
@@ -116,7 +133,21 @@ mod tests {
         assert_eq!(
             cli.command,
             Commands::Timeline {
-                when: "today".to_string()
+                when: "today".to_string(),
+                json: false,
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_cli_timeline_flags() {
+        let args = ["cortex", "timeline", "this week", "--json"];
+        let cli = Cli::try_parse_from(args).expect("Failed to parse timeline with json");
+        assert_eq!(
+            cli.command,
+            Commands::Timeline {
+                when: "this week".to_string(),
+                json: true,
             }
         );
     }
@@ -124,9 +155,33 @@ mod tests {
     #[test]
     fn test_parse_cli_debt_and_status() {
         let debt_cli = Cli::try_parse_from(["cortex", "debt"]).unwrap();
-        assert_eq!(debt_cli.command, Commands::Debt);
+        assert_eq!(
+            debt_cli.command,
+            Commands::Debt {
+                min_severity: None,
+                json: false,
+            }
+        );
+
+        let debt_filter_cli = Cli::try_parse_from(["cortex", "debt", "-s", "high", "--json"]).unwrap();
+        assert_eq!(
+            debt_filter_cli.command,
+            Commands::Debt {
+                min_severity: Some("high".to_string()),
+                json: true,
+            }
+        );
 
         let status_cli = Cli::try_parse_from(["cortex", "status"]).unwrap();
         assert_eq!(status_cli.command, Commands::Status);
+    }
+
+    #[test]
+    fn test_parse_cli_stack_flags() {
+        let stack_cli = Cli::try_parse_from(["cortex", "stack"]).unwrap();
+        assert_eq!(stack_cli.command, Commands::Stack { clear: false });
+
+        let clear_cli = Cli::try_parse_from(["cortex", "stack", "--clear"]).unwrap();
+        assert_eq!(clear_cli.command, Commands::Stack { clear: true });
     }
 }

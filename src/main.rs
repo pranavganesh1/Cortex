@@ -116,7 +116,7 @@ let (entities, relations) = ingest_repo(path_str, &pool).await?;
             
             cortex::embed::indexer::index_all_entities(&pool).await?;
         }
-        Commands::Timeline { when } => {
+        Commands::Timeline { when, json } => {
             let range = cortex::temporal::parser::parse_time_expression(&when)
                 .unwrap_or_else(|| {
                     println!("⚠️ Could not parse '{}'. Using 'today'.", when);
@@ -124,10 +124,14 @@ let (entities, relations) = ingest_repo(path_str, &pool).await?;
                 });
             
             let sessions = cortex::temporal::reconstructor::get_timeline(&pool, &range).await?;
-            let formatted = cortex::temporal::formatter::format_timeline(&sessions);
-            println!("{}", formatted);
+            if json {
+                println!("{}", cortex::temporal::formatter::format_timeline_json(&sessions));
+            } else {
+                let formatted = cortex::temporal::formatter::format_timeline(&sessions);
+                println!("{}", formatted);
+            }
         }
-        Commands::Recall { when } => {
+        Commands::Recall { when, json } => {
             let range = cortex::temporal::parser::parse_time_expression(&when)
                 .unwrap_or_else(|| {
                     println!("⚠️ Could not parse '{}'. Using '2 hours ago'.", when);
@@ -141,14 +145,23 @@ let (entities, relations) = ingest_repo(path_str, &pool).await?;
             };
             
             let state = cortex::temporal::reconstructor::reconstruct_state(&pool, point).await?;
-            let formatted = cortex::temporal::formatter::format_mental_state(&state);
-            println!("{}", formatted);
+            if json {
+                println!("{}", cortex::temporal::formatter::format_mental_state_json(&state));
+            } else {
+                let formatted = cortex::temporal::formatter::format_mental_state(&state);
+                println!("{}", formatted);
+            }
         }
         Commands::Focus => {
             println!("{}", cortex::memory::formatter::format_focus());
         }
-        Commands::Stack => {
-            println!("{}", cortex::memory::formatter::format_stack());
+        Commands::Stack { clear } => {
+            if clear {
+                cortex::memory::stack::clear();
+                println!("🧹 Working memory stack cleared.");
+            } else {
+                println!("{}", cortex::memory::formatter::format_stack());
+            }
         }
         Commands::Back => {
             match cortex::memory::stack::back() {
@@ -163,9 +176,23 @@ let (entities, relations) = ingest_repo(path_str, &pool).await?;
         Commands::Where => {
             println!("{}", cortex::memory::formatter::format_where_was_i());
         }
-        Commands::Debt => {
-            let debts = cortex::debt::detector::detect_debt(&pool).await?;
-            println!("{}", cortex::debt::formatter::format_debt_report(&debts));
+        Commands::Debt { min_severity, json } => {
+            let mut debts = cortex::debt::detector::detect_debt(&pool).await?;
+            if let Some(sev_str) = min_severity {
+                match sev_str.parse::<cortex::debt::detector::Severity>() {
+                    Ok(min_sev) => {
+                        debts = cortex::debt::detector::filter_debt_by_min_severity(&debts, min_sev);
+                    }
+                    Err(e) => {
+                        eprintln!("⚠️ Warning: {}", e);
+                    }
+                }
+            }
+            if json {
+                println!("{}", cortex::debt::formatter::format_debt_json(&debts));
+            } else {
+                println!("{}", cortex::debt::formatter::format_debt_report(&debts));
+            }
         }
         Commands::Weekly => {
             let debts = cortex::debt::detector::detect_debt(&pool).await?;
